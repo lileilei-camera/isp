@@ -8,7 +8,7 @@ endif(COMMAND cmake_policy)
 FIND_PACKAGE( OpenCV REQUIRED )
 
 # Declare the target (an executable)
-ADD_EXECUTABLE(isp  fetch_raw.c)
+ADD_EXECUTABLE(isp fetch_raw.cpp isp_pipeline.cpp blc.cpp isp_util.cpp)
 
 TARGET_LINK_LIBRARIES(isp ${OpenCV_LIBS})
 
