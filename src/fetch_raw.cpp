@@ -137,7 +137,6 @@ int show_raw_image(char *name,cv::Mat img,bayer_format_t bayer)
   cv::cvtColor(img,out,code);
   imge=out;
   cvShowImage(name,&imge);  
-  cvWaitKey(0);
   log_func_exit();
   return 0;
 }

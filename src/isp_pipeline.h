@@ -23,6 +23,9 @@ using namespace cv;
 #define SET_RAW10_PIX_HIGH(set, value) ((set)=((value)<<2))
 #define SET_RAW10_PIX_LOW(set, value) (((value)<<0)|((set)&(~SET_RAW10_PIX_LOW_MASK)))
 
+#define LSC_MESH_GRID_WIDHT 64
+#define LSC_MESH_GRID_HEIGHT 48
+
 typedef enum
 {
   CV_BayerBG,
@@ -62,7 +65,17 @@ typedef struct
 
 typedef struct
 {
+  float r_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
+  float gr_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
+  float gb_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
+  float b_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
+}lsc_pra_t;
+
+
+typedef struct
+{
   blc_pra_t blc_pra;
+  lsc_pra_t lsc_pra;
 }isp_pra_t;
 
 cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr);
