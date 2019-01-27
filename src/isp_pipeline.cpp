@@ -7,7 +7,9 @@
 #include "isp_log.h"
 #include "string.h"
 #include "isp_util.h"
+#include "plot.h"
 
+int test_plot();
 
 typedef struct
 {
@@ -79,6 +81,7 @@ static int show_help()
    printf("--fetch_raw: <name>[raw picture name] \n");
    printf("--get_blc_pra: <name>[blc tuning picture] \n");
    printf("--process: <raw_name> <name1> <name2> ... --end \n");
+   printf("--test_plot : test the plat function");
    return 0;
 }
 
@@ -120,6 +123,13 @@ int main( int argc, char** argv)
     p_isp->raw_dscr.bayer_format=CV_BayerBG;    
     cv::Mat blc_imag(p_isp->raw_dscr.hegiht,p_isp->raw_dscr.width,CV_16UC1);
     p_isp->blc_imag=blc_imag;
+    
+    arg_index=get_arg_index_by_name("--test_plot",argc,argv);
+    if(arg_index>0)
+    {
+       test_plot();
+    }
+    
     arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
     if(arg_index>0)
     {
