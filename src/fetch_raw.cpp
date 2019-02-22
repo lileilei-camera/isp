@@ -7,19 +7,20 @@
 #include "isp_pipeline.h"
 #include "isp_log.h"
 
-cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
+
+cv::Mat read_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
 {
   cv::Mat ret;
   if(!name)
   {
     log_err("file name null");
-	return ret;
+    return ret;
   }
   int fd=open(name,O_RDONLY);
   if(fd<0)
   {
     log_err("open file failed");
-	return ret;
+    return ret;
   }
   int buf_width=ALIGN_TO(ALIGN_TO(raw_dscr->width,raw_dscr->width_algin)*raw_dscr->bitwidth/8,raw_dscr->line_length_algin);  
   int raw_size=buf_width*raw_dscr->hegiht;  
@@ -28,8 +29,8 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   if(!p_raw)
   {
     log_err("malloc err");
-	close(fd);
-	return ret;
+    close(fd);
+    return ret;
   }
   read(fd,p_raw,raw_size);
   //then conver the raw file buffer to unpacked uint16 raw
@@ -39,33 +40,33 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   for(i=0;i<raw_dscr->hegiht;i++)
   {
      if(raw_dscr->is_packed&&raw_dscr->bitwidth==10)
-	 {
-	   int pix_index=0;
+     {
+       int pix_index=0;
        int line_offset=i*buf_width;       
        log_debug("line_offset=%d i=%d",line_offset,i);
        for(j=0;j<buf_width;)
        {
           SET_RAW10_PIX_HIGH(pix_val[0],p_raw[line_offset+j+0]);
-		  SET_RAW10_PIX_LOW(pix_val[0],GET_RAW10_PIX0_LOW(p_raw[line_offset+j+4]));
-		  raw_16_img.at<u_int16_t>(i,(pix_index+0))=pix_val[0]<<6;
-		  
-		  SET_RAW10_PIX_HIGH(pix_val[1],p_raw[line_offset+j+1]);
-		  SET_RAW10_PIX_LOW(pix_val[1],GET_RAW10_PIX1_LOW(p_raw[line_offset+j+4]));
-		  raw_16_img.at<u_int16_t>(i,(pix_index+1))=pix_val[1]<<6;
-		  
-		  SET_RAW10_PIX_HIGH(pix_val[2],p_raw[i*buf_width+j+2]);
-		  SET_RAW10_PIX_LOW(pix_val[2],GET_RAW10_PIX2_LOW(p_raw[line_offset+j+4]));
-		  raw_16_img.at<u_int16_t>(i,(pix_index+2))=pix_val[2]<<6;
-		  
-		  SET_RAW10_PIX_HIGH(pix_val[3],p_raw[i*buf_width+j+3]);
-		  SET_RAW10_PIX_LOW(pix_val[3],GET_RAW10_PIX3_LOW(p_raw[line_offset+j+4]));
-		  raw_16_img.at<u_int16_t>(i,(pix_index+3))=pix_val[3]<<6;
-		  
+          SET_RAW10_PIX_LOW(pix_val[0],GET_RAW10_PIX0_LOW(p_raw[line_offset+j+4]));
+          raw_16_img.at<u_int16_t>(i,(pix_index+0))=pix_val[0]<<6;
+          
+          SET_RAW10_PIX_HIGH(pix_val[1],p_raw[line_offset+j+1]);
+          SET_RAW10_PIX_LOW(pix_val[1],GET_RAW10_PIX1_LOW(p_raw[line_offset+j+4]));
+          raw_16_img.at<u_int16_t>(i,(pix_index+1))=pix_val[1]<<6;
+          
+          SET_RAW10_PIX_HIGH(pix_val[2],p_raw[i*buf_width+j+2]);
+          SET_RAW10_PIX_LOW(pix_val[2],GET_RAW10_PIX2_LOW(p_raw[line_offset+j+4]));
+          raw_16_img.at<u_int16_t>(i,(pix_index+2))=pix_val[2]<<6;
+          
+          SET_RAW10_PIX_HIGH(pix_val[3],p_raw[i*buf_width+j+3]);
+          SET_RAW10_PIX_LOW(pix_val[3],GET_RAW10_PIX3_LOW(p_raw[line_offset+j+4]));
+          raw_16_img.at<u_int16_t>(i,(pix_index+3))=pix_val[3]<<6;
+          
           j+=5;
-		  pix_index+=4;
+          pix_index+=4;
        }   
        log_debug("pix_index=%d j=%d",pix_index,j);
-    }else
+    }else if(!raw_dscr->is_packed)
     {
       
     }
@@ -73,6 +74,72 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   ret=raw_16_img;
   close(fd);
   free(p_raw);
+  log_func_exit();
+  return ret;
+}
+
+cv::Mat read_dng_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
+{
+  cv::Mat ret;
+  u_int16_t *p_val=NULL;
+  if(!name)
+  {
+    log_err("file name null");
+    return ret;
+  }
+  int fd=open(name,O_RDONLY);
+  if(fd<0)
+  {
+    log_err("open file failed");
+    return ret;
+  }
+  int buf_width=ALIGN_TO(raw_dscr->width*2,raw_dscr->line_length_algin);  
+  int raw_size=buf_width*raw_dscr->hegiht;  
+  log_info("buf_width=%d,hegiht=%d raw_size=%d",buf_width,raw_dscr->hegiht,raw_size);
+  u_int8_t  *p_raw=(u_int8_t  *)malloc(raw_size);
+  if(!p_raw)
+  {
+    log_err("malloc err");
+    close(fd);
+    return ret;
+  }
+  read(fd,p_raw,raw_size);
+  //then conver the raw file buffer to unpacked uint16 raw
+  cv::Mat raw_16_img(raw_dscr->hegiht,raw_dscr->width,CV_16UC1);
+  int i,j;
+  for(i=0;i<raw_dscr->hegiht;i++)
+  {
+       int line_offset=i*buf_width;   
+       p_val=(u_int16_t *)(p_raw+line_offset);
+       log_debug("line_offset=%d i=%d",line_offset,i);
+       for(j=0;j<raw_dscr->width;j++)
+       {
+          raw_16_img.at<u_int16_t>(i,j)=p_val[j]<<(16-raw_dscr->bitwidth);
+       }   
+  }
+  ret=raw_16_img;
+  close(fd);
+  free(p_raw);
+  log_func_exit();
+  return ret;
+}
+
+cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
+{
+  log_func_enter();
+  cv::Mat ret;
+  if(!name)
+  {
+    log_err("file name null");
+	return ret;
+  }
+  if(raw_dscr->is_packed)
+  {
+     ret=read_mipi_raw_to_dng16_raw(name,raw_dscr);
+  }else
+  {
+     ret=read_dng_raw_to_dng16_raw(name,raw_dscr);
+  }
   log_func_exit();
   return ret;
 }

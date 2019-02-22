@@ -4,6 +4,13 @@
 #include "highgui.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "highgui.h"
+#include <fcntl.h>
+#include "isp_log.h"
+#include "string.h"
+#include "isp_util.h"
+#include <unistd.h>
+
 using namespace cv;
 
 #define ALIGN_TO(size,n) ((size+(n-1))&(~(n-1)))
@@ -57,6 +64,16 @@ typedef struct
 
 typedef struct
 {
+  u_int32_t  bins;  
+  u_int32_t  sum;//cols * rows
+  u_int32_t  *r_hist;
+  u_int32_t  *gr_hist;
+  u_int32_t  *gb_hist;
+  u_int32_t  *b_hist;
+}raw_hist_t;
+
+typedef struct
+{
   u_int16_t r_blc;
   u_int16_t gr_blc;
   u_int16_t gb_blc;
@@ -88,6 +105,11 @@ cv::Mat get_Gb_raw(raw_ch_t ch,bayer_format_t bayer);
 cv::Mat get_R_raw(raw_ch_t ch,bayer_format_t bayer);
 cv::Mat get_B_raw(raw_ch_t ch,bayer_format_t bayer);
 blc_pra_t get_blc_value(raw_ch_t ch,bayer_format_t bayer);
+raw_hist_t get_raw_hist(int bins,raw_ch_t raw_ch,bayer_format_t bayer);
+int release_raw_hist(raw_hist_t *raw_hist);
 raw_ch_t process_blc(raw_ch_t,blc_pra_t blc_pra,bayer_format_t bayer);
+int log_raw_hist(raw_hist_t *raw_hist);
+int save_raw_hist(char *name,raw_hist_t *raw_hist);
+int plot_hist(char *pic_name,const char *hist_name,Mat img,float range_st, float range_end);
 #endif
 

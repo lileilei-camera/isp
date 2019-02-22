@@ -7,5 +7,7 @@
 #include "isp_pipeline.h"
 #include "isp_log.h"
 
-lsc_pra_t *get_lsc_pra()
-
+lsc_pra_t *get_lsc_pra(raw_ch_t ch,bayer_format_t bayer)
+{
+    
+}
