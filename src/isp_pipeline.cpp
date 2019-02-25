@@ -1,7 +1,7 @@
 #include "isp_pipeline.h"
 #include "plot.h"
 
-//#define DEBUG_MIPI_RAW
+#define DEBUG_MIPI_RAW
 
 int test_plot();
 
@@ -81,6 +81,53 @@ static int process_plot_raw_hist(char *name)
    return 0;
 }
 
+static int process_raw_haar_denoise(char *name,int is_multi)
+{
+    cv::Mat raw_imag;
+    cv::Mat ch_img; 
+    isp_t *p_isp=get_isp(); 
+    raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
+    p_isp->ch=split_raw_ch(raw_imag,p_isp->raw_dscr.bayer_format);
+    ch_img=get_R_raw(p_isp->ch,p_isp->raw_dscr.bayer_format);    
+    show_and_save_img(name,"input",ch_img);
+    
+    cv::Mat ch_img_float=get_u16_float_img(ch_img);
+    cv::Mat wave1_img=haar_wavelet_decompose(ch_img_float,1,is_multi);
+    cv::Mat wave1_u16_img=get_float_u16_img(wave1_img);    
+    show_and_save_img(name,"wave_1_layer",wave1_u16_img);
+
+    #if 1
+    cv::Mat wave1_sub_img_0=get_sub_wave_img(wave1_img,0);
+    cv::Mat wave2_img=haar_wavelet_decompose(wave1_sub_img_0,1,is_multi);
+    cv::Mat wave2_u16_img=get_float_u16_img(wave2_img);    
+    show_and_save_img(name,"wave_2_layer",wave2_u16_img);
+ 
+    cv::Mat wave2_sub_img_0=get_sub_wave_img(wave2_img,0);
+    cv::Mat wave3_img=haar_wavelet_decompose(wave2_sub_img_0,1,is_multi);
+    cv::Mat wave3_u16_img=get_float_u16_img(wave3_img);    
+    show_and_save_img(name,"wave_3_layer",wave3_u16_img);
+
+    
+    cv::Mat wave3_sub_img_0=get_sub_wave_img(wave3_img,0);
+    cv::Mat wave4_img=haar_wavelet_decompose(wave3_sub_img_0,1,is_multi);
+    cv::Mat wave4_u16_img=get_float_u16_img(wave4_img);    
+    show_and_save_img(name,"wave_4_layer",wave4_u16_img);
+
+
+    cv::Mat wave4_sub_img_0=get_sub_wave_img(wave4_img,0);
+    cv::Mat wave5_img=haar_wavelet_decompose(wave4_sub_img_0,1,is_multi);
+    cv::Mat wave5_u16_img=get_float_u16_img(wave5_img);    
+    show_and_save_img(name,"wave_5_layer",wave5_u16_img);
+
+
+    cv::Mat wave5_sub_img_0=get_sub_wave_img(wave5_img,0);
+    cv::Mat wave6_img=haar_wavelet_decompose(wave5_sub_img_0,1,is_multi);
+    cv::Mat wave6_u16_img=get_float_u16_img(wave6_img);    
+    show_and_save_img(name,"wave_6_layer",wave6_u16_img);
+    #endif
+    return 0;
+}
+
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 {
      int i=0;
@@ -104,6 +151,7 @@ static int show_help()
    printf("--test_plot :test the plat function \n");   
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
    printf("--plot_raw_hist :<name>[raw picture]\n");
+   printf("--raw_denoise :<name>[raw picture name] --multi \n");
    return 0;
 }
 
@@ -150,7 +198,7 @@ int main( int argc, char *argv[])
     p_isp->raw_dscr.hegiht=1080;
     //p_isp->raw_dscr.hegiht=2288;
     p_isp->raw_dscr.bitwidth=14;
-    p_isp->raw_dscr.bitwidth=12;
+    //p_isp->raw_dscr.bitwidth=12;
     p_isp->raw_dscr.is_packed=0;
     p_isp->raw_dscr.height_algin=1;
     p_isp->raw_dscr.width_algin=1;
@@ -224,9 +272,28 @@ int main( int argc, char *argv[])
            process_plot_raw_hist(argv[arg_index+1]);
         }else
         {
-           log_err("too less pra for get_raw_his");
+           log_err("too less pra for plot_raw_hist");
         }
     }
+
+    arg_index=get_arg_index_by_name("--raw_denoise",argc,argv);
+    if(arg_index>0)
+    {
+        int sub_pra_index=get_arg_index_by_name("--multi",argc,argv);
+        if((arg_index+1)<=(argc-1)){
+           if(sub_pra_index>0){
+              process_raw_haar_denoise(argv[arg_index+1],1);
+           }else
+           {
+              process_raw_haar_denoise(argv[arg_index+1],0);
+           }
+        }else
+        {
+           log_err("too less pra for raw_denoise");
+        }
+    }
+
+    
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
     {

@@ -80,4 +80,90 @@ int plot_hist(char *pic_name,const char *hist_name,Mat img,float range_st, float
 	return 0;
 }
 
+int show_and_save_img(char *picname,char *func_name,Mat img)
+{
+   char *f_name=(char *)malloc(128);     
+   sprintf(f_name,"%s_%s.png",picname,func_name);    
+   cvNamedWindow(f_name,0);  
+   imshow(f_name, img);   
+   vector<int> compression_params;
+   compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION); 
+   compression_params.push_back(0);   
+   cv::imwrite(f_name,img,compression_params);    
+   free(f_name);
+}
+
+Mat get_float_u16_img(Mat img)
+{
+   Mat result(img.rows,img.cols,CV_16UC1);
+   int i=0,j=0;
+   for(i=0;i<img.rows;i++)
+   {
+      for(j=0;j<img.cols;j++)
+      {
+         if(img.at<float>(i,j)>0)
+         {
+             result.at<u_int16_t>(i,j)=(u_int16_t)img.at<float>(i,j);
+         }else
+         {
+             result.at<u_int16_t>(i,j)=(u_int16_t)(-img.at<float>(i,j));
+         }
+      }
+   }
+   return result;
+}
+
+Mat get_u16_float_img(Mat img)
+{
+   Mat result(img.rows,img.cols,CV_32FC1);
+   int i=0,j=0;
+   for(i=0;i<img.rows;i++)
+   {
+      for(j=0;j<img.cols;j++)
+      {
+         result.at<float>(i,j)=(float)img.at<u_int16_t>(i,j);
+      }
+   }
+   return result;
+}
+
+Mat get_sub_wave_img(Mat img,int sub)
+{
+    int sub_rows=img.rows/2;
+    int sub_cols=img.cols/2;    
+    Mat result(sub_rows,sub_cols,CV_32FC1);
+    int i=0,j=0;
+    int row_offset;
+    int col_offset;
+    if(sub==0)
+    {
+       row_offset=0;
+       col_offset=0;
+    }else if(sub==1)
+    {       
+       row_offset=0;
+       col_offset=sub_cols;
+    }else if(sub==2)
+    {       
+       row_offset=sub_rows;
+       col_offset=0;
+    }else if(sub==3)
+    {    
+       row_offset=sub_rows;
+       col_offset=sub_cols;
+    }else
+    {
+       log_err("err");
+       return result;
+    }
+    
+    for(i=0;i<sub_rows;i++)
+    {
+      for(j=0;j<sub_cols;j++)
+      {
+         result.at<float>(i,j)=img.at<float>(i+row_offset,j+col_offset);
+      }
+    }
+}
+
 

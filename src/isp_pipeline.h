@@ -80,6 +80,10 @@ typedef struct
   u_int16_t b_blc;
 }blc_pra_t;
 
+typedef struct{
+
+}wave_denoise_pra_t;
+
 typedef struct
 {
   float r_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
@@ -111,5 +115,10 @@ raw_ch_t process_blc(raw_ch_t,blc_pra_t blc_pra,bayer_format_t bayer);
 int log_raw_hist(raw_hist_t *raw_hist);
 int save_raw_hist(char *name,raw_hist_t *raw_hist);
 int plot_hist(char *pic_name,const char *hist_name,Mat img,float range_st, float range_end);
+int show_and_save_img(char *picname,char *func_name,Mat img);
+Mat get_float_u16_img(Mat img);
+Mat get_u16_float_img(Mat img);
+Mat haar_wavelet_decompose(Mat input_img,int layers,int is_multi=0);
+Mat get_sub_wave_img(Mat img,int sub);
 #endif
 
