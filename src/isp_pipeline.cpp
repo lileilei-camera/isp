@@ -183,6 +183,7 @@ static int show_help()
    printf("--plot_raw_hist :<name>[raw picture]\n");
    printf("--raw_denoise :<name>[raw picture name] --multi \n");   
    printf("--hdr_merge :<name>[raw picture name]\n");
+   printf("--test_cvui\n");
    return 0;
 }
 
@@ -258,6 +259,13 @@ int main( int argc, char *argv[])
     {       
        int plot_drc_gtm1(float k1,float k2,float k3,float gain);
        plot_drc_gtm1(1,8,0.4,1);
+    }
+
+    arg_index=get_arg_index_by_name("--test_cvui",argc,argv);
+    if(arg_index>0)
+    {       
+       int cvui_test();
+       cvui_test();
     }
     
     arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
