@@ -1,7 +1,7 @@
 #include "isp_pipeline.h"
 #include "plot.h"
 
-#define DEBUG_MIPI_RAW
+//#define DEBUG_MIPI_RAW
 
 int test_plot();
 
@@ -128,6 +128,36 @@ static int process_raw_haar_denoise(char *name,int is_multi)
     return 0;
 }
 
+static int process_hdr_merge(char *name)
+{
+   cv::Mat raw_imag;
+   cv::Mat ch_img; 
+   isp_t *p_isp=get_isp(); 
+   raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
+   p_isp->ch=split_raw_ch(raw_imag,p_isp->raw_dscr.bayer_format);
+   ch_img=get_R_raw(p_isp->ch,p_isp->raw_dscr.bayer_format);    
+   show_and_save_img(name,"r_ch",ch_img);
+   cv::Mat l_img=get_long_exp_img(ch_img,1080/2,8);   
+   cv::Mat s_img=get_short_exp_img(ch_img,1080/2,9);
+   show_and_save_img(name,"r_ch_long",l_img);   
+   show_and_save_img(name,"r_ch_short",s_img);
+   hdr_merge_pra_t hdr_pra;
+   hdr_pra.long_exp_th=240<<8;   
+   hdr_pra.long_exp_th_low=200<<8;
+   cv::Mat merg_img=merge_hdr_img(l_img,s_img,32,&hdr_pra);
+   drc_pra_t drc_pra;
+   drc_pra.methed=DRC_GAMMA;
+   //drc_pra.methed=DRC_GAMMA;
+   drc_pra.gamma=3.0;
+   drc_pra.k1=1;
+   drc_pra.k2=8;
+   drc_pra.k3=0.4;
+   cv::Mat hdr_img=drc_hdr_img(merg_img,32,&drc_pra);   
+   show_and_save_img(name,"r_ch_hdr",hdr_img);
+}
+
+
+
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 {
      int i=0;
@@ -151,7 +181,8 @@ static int show_help()
    printf("--test_plot :test the plat function \n");   
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
    printf("--plot_raw_hist :<name>[raw picture]\n");
-   printf("--raw_denoise :<name>[raw picture name] --multi \n");
+   printf("--raw_denoise :<name>[raw picture name] --multi \n");   
+   printf("--hdr_merge :<name>[raw picture name]\n");
    return 0;
 }
 
@@ -194,11 +225,15 @@ int main( int argc, char *argv[])
     p_isp->raw_dscr.bayer_format=CV_BayerBG; 
     #else
     #if 1
-    p_isp->raw_dscr.width=1952;
-    p_isp->raw_dscr.hegiht=1080;
-    //p_isp->raw_dscr.hegiht=2288;
-    p_isp->raw_dscr.bitwidth=14;
-    //p_isp->raw_dscr.bitwidth=12;
+       #if 0
+       p_isp->raw_dscr.width=1952;
+       p_isp->raw_dscr.hegiht=1080;    
+       p_isp->raw_dscr.bitwidth=14;
+       #else
+       p_isp->raw_dscr.width=1952;
+       p_isp->raw_dscr.hegiht=2288;
+       p_isp->raw_dscr.bitwidth=12;
+       #endif   
     p_isp->raw_dscr.is_packed=0;
     p_isp->raw_dscr.height_algin=1;
     p_isp->raw_dscr.width_algin=1;
@@ -220,8 +255,9 @@ int main( int argc, char *argv[])
     
     arg_index=get_arg_index_by_name("--test_plot",argc,argv);
     if(arg_index>0)
-    {
-       test_plot();
+    {       
+       int plot_drc_gtm1(float k1,float k2,float k3,float gain);
+       plot_drc_gtm1(1,8,0.4,1);
     }
     
     arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
@@ -290,6 +326,16 @@ int main( int argc, char *argv[])
         }else
         {
            log_err("too less pra for raw_denoise");
+        }
+    }
+    arg_index=get_arg_index_by_name("--hdr_merge",argc,argv);
+    if(arg_index>0)
+    {
+        if((arg_index+1)<=(argc-1)){
+           process_hdr_merge(argv[arg_index+1]);
+        }else
+        {
+           log_err("too less pra for hdr_merge");
         }
     }
 

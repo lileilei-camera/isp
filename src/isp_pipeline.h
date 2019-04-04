@@ -84,6 +84,27 @@ typedef struct{
 
 }wave_denoise_pra_t;
 
+typedef struct {
+	int long_exp_th; //below this ,we will use the long exp
+	int long_exp_th_low;
+}hdr_merge_pra_t;
+
+enum{
+	DRC_GAMMA,
+    DRC_GTM1,
+};
+
+typedef struct {
+	int methed;
+	//for DRC_GAMMA
+	float gamma;
+	//for DRC_GTM1
+	float k1;
+	float k2;
+	float k3;
+}drc_pra_t;
+
+
 typedef struct
 {
   float r_gain[LSC_MESH_GRID_HEIGHT][LSC_MESH_GRID_WIDHT];
@@ -120,5 +141,9 @@ Mat get_float_u16_img(Mat img);
 Mat get_u16_float_img(Mat img);
 Mat haar_wavelet_decompose(Mat input_img,int layers,int is_multi=0);
 Mat get_sub_wave_img(Mat img,int sub);
+Mat get_long_exp_img(Mat img,int height,int long_offset);
+Mat get_short_exp_img(Mat img,int height,int short_offset);
+Mat merge_hdr_img(Mat long_img, Mat short_img,float exp_ration,hdr_merge_pra_t *pra);
+Mat drc_hdr_img(Mat hdr_img,float exp_ration,drc_pra_t *pra);
 #endif
 

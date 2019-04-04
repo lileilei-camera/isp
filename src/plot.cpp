@@ -11,6 +11,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 //采用范型设计，因此将实现部分和声明部分放在一个文件中
+int show_and_save_img(char *picname,char *func_name,Mat img);
 CPlot::CPlot()
 {
 	this->border_size = 40; //图外围边界
@@ -160,49 +161,49 @@ void CPlot::DrawAxis (IplImage *image)
 	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.55,0.7, 0,1,CV_AA);
 
 	int chw = 6, chh = 10; 
-	char text[16];
+	char text[64];
 
 	// y max
 	if ( (this->y_max - y_ref) > 0.05 * (this->y_max - this->y_min) )
 	{
-		snprintf(text, sizeof(text)-1, "%.1f", this->y_max);
+		snprintf(text, sizeof(text)-1, "%.6e", this->y_max);
 		cvPutText(image, text, cvPoint(bs, bs / 2), &font, this->text_color );
 	}
 	// y min
 	if ( (y_ref - this->y_min) > 0.05 * (this->y_max - this->y_min) )
 	{
-		snprintf(text, sizeof(text)-1, "%.1f", this->y_min);
+		snprintf(text, sizeof(text)-1, "%.6e", this->y_min);
 		cvPutText(image, text, cvPoint(bs, h - bs / 2), &font, this->text_color);
 	}
 
 	//画Y轴的刻度 每隔 scale_pixes 个像素
 	//Y正半轴
-	double y_scale_pixes = chh * 2;
+	double y_scale_pixes = gh/10;
 	for (int i = 0; i < ceil( (x_axis_pos - bs) / y_scale_pixes ) + 1; i++)
 	{
-		snprintf(text, sizeof(text)-1, "%.1f", i * y_scale_pixes / this->y_scale );
+		snprintf(text, sizeof(text)-1, "%.6e", i * y_scale_pixes / this->y_scale );
 		cvPutText(image, text, cvPoint(bs / 5, x_axis_pos - i * y_scale_pixes), &font, this->axis_color);
 	}
 	//Y负半轴
 	for (int i = 1; i < ceil (( h - x_axis_pos - bs ) / y_scale_pixes ) + 1; i++)
 	{
-		snprintf(text, sizeof(text)-1, "%.1f", -i * y_scale_pixes / this->y_scale );
+		snprintf(text, sizeof(text)-1, "%.6e", -i * y_scale_pixes / this->y_scale );
 		cvPutText(image, text, cvPoint(bs / 5, x_axis_pos + i * y_scale_pixes), &font, this->axis_color);
 	}
 
 	// x_max
-	snprintf(text, sizeof(text)-1, "%.1f", this->x_max );
+	snprintf(text, sizeof(text)-1, "%.6e", this->x_max );
 	cvPutText(image, text, cvPoint(w - bs/2 - strlen(text) * chw, x_axis_pos), &font, this->text_color);
 
 	// x min
-	snprintf(text, sizeof(text)-1, "%.1f", this->x_min );
+	snprintf(text, sizeof(text)-1, "%.6e", this->x_min );
 	cvPutText(image, text, cvPoint(bs, x_axis_pos ), &font, this->text_color);
 
 	//画X轴的刻度 每隔 scale_pixes 个像素
-	double x_scale_pixes = chw * 4;
+	double x_scale_pixes = gw/4;
 	for (int i = 1; i < ceil( gw / x_scale_pixes ) + 1; i++)
 	{
-		snprintf(text, sizeof(text)-1, "%.0f", this->x_min + i * x_scale_pixes / this->x_scale );
+		snprintf(text, sizeof(text)-1, "%.6e", this->x_min + i * x_scale_pixes / this->x_scale );
 		cvPutText(image, text, cvPoint(bs + i * x_scale_pixes - bs / 4, x_axis_pos + chh), &font, this->axis_color);
 	}
 }
@@ -455,10 +456,11 @@ int test_plot()
 	plot.y_min = -200;
 	plot.axis_color = Scalar(0,255,0);
 	plot.text_color = Scalar(255,0,255);
-	plot.plot(Y, Cnt, CV_RGB(0, 0, 0)); //可以只传入Y值 X默认从0开始 
+	plot.plot(Y, Cnt, CV_RGB(0, 0, 0),'.',true); //可以只传入Y值 X默认从0开始 
 	plot.title("test plot"); //可以设定标题 只能是英文 中文会乱码 有解决方案，但是很麻烦
 	plot.xlabel("X",Scalar(255,255,0));
-	plot.ylabel("Y",Scalar(255,255,0));
+	plot.ylabel("Y",Scalar(255,255,0));    
+    cvNamedWindow("1",0);  
 	cvShowImage("0", plot.Figure);
 
 	//如何在一幅图中绘制多组数据？每次绘制的同时还对数据进行存储？
@@ -528,5 +530,52 @@ int test_plot()
 	imshow("7",p.figure());
 
 	return 0;
+}
+
+//plot kx isp drc gtm
+int plot_drc_gtm1(float k1,float k2,float k3,float drc_gain)
+{
+   int i=0;
+   int exp_ration=32;
+   int max_val=(1<<20-1);
+   float gain_min=655536;
+   double y_in;
+   double *x=(double *)malloc(sizeof(double)*max_val);
+   double *y=(double *)malloc(sizeof(double)*max_val);
+   double *gain=(double *)malloc(sizeof(double)*max_val);
+   for(i=0;i<max_val;i++){
+        x[i]=(double)i/max_val;        
+        y[i]=k1*x[i]*exp(-k2*pow(x[i],k3));  
+   }
+   
+   CPlot plot;
+   plot.axis_color = Scalar(0,255,0);
+   plot.text_color = Scalar(255,0,255);
+   plot.plot(x,y,max_val, CV_RGB(0, 0, 0),'.',true);
+   plot.title("drc plot");
+   plot.xlabel("X",Scalar(255,255,0));
+   plot.ylabel("Y",Scalar(255,255,0));    
+   show_and_save_img("drc","out",plot.Figure);
+   for(i=0;i<max_val;i++){
+      gain[i]=(x[i]+ drc_gain*y[i])/x[i];
+      if(gain_min>gain[i])
+        gain_min=gain[i];
+   }
+   printf("gain_min=%f\n",gain_min);
+   for(i=0;i<max_val;i++){
+      gain[i]-=gain_min;
+   }
+   CPlot plot_gain;
+   plot_gain.axis_color = Scalar(0,255,0);
+   plot_gain.text_color = Scalar(255,0,255);
+   plot_gain.plot(x,gain,max_val, CV_RGB(0, 0, 0),'.',true);
+   plot_gain.title("drc plot gain");
+   plot_gain.xlabel("X",Scalar(255,255,0));
+   plot_gain.ylabel("Y",Scalar(255,255,0));    
+   show_and_save_img("drc","gain",plot_gain.Figure);
+   free(x);
+   free(y);
+   free(gain);
+   return 0;
 }
 

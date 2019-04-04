@@ -1,1 +1,0 @@
-/home/lileilei/share/opencv/2.4.13.4/opencv-2.4.13.4/samples/c/isp/src/CMakeFiles/isp.dir
