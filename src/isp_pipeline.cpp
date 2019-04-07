@@ -1,7 +1,7 @@
 #include "isp_pipeline.h"
 #include "plot.h"
 
-//#define DEBUG_MIPI_RAW
+#define DEBUG_MIPI_RAW
 
 int test_plot();
 
@@ -31,16 +31,33 @@ static int process_fetch_raw(char *name)
    p_isp->raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
    sprintf(f_name,"%s_fetch",name);
    dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);
-}
+} 
+  u_int16_t gr_blc;
+  u_int16_t gb_blc;
+  u_int16_t b_blc;
 static int process_get_blc_pra(char *name)
 {
-   int i=0;   
+   int i=0;  
    cv::Mat raw_imag;  
    isp_t *p_isp=get_isp(); 
    raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
    p_isp->ch=split_raw_ch(raw_imag,p_isp->raw_dscr.bayer_format);
    p_isp->isp_pra->blc_pra=get_blc_value(p_isp->ch,p_isp->raw_dscr.bayer_format);
    save_isp_pra(p_isp->isp_pra,sizeof(isp_pra_t));
+   ofstream blc_h("blc_pra.h");
+   blc_h << "/*blc_pra_t */"<<endl;
+   blc_h << "{ "<<endl;
+   blc_h << "   /* u_int16_t r_blc;*/"<<endl;
+   blc_h << "   "<<dec<<p_isp->isp_pra->blc_pra.r_blc<<","<<endl;
+   blc_h << "   /* u_int16_t gr_blc;*/"<<endl;
+   blc_h << "   "<<dec<<p_isp->isp_pra->blc_pra.gr_blc<<","<<endl;
+   blc_h << "   /* u_int16_t gb_blc;*/"<<endl;
+   blc_h << "   "<<dec<<p_isp->isp_pra->blc_pra.gb_blc<<","<<endl;
+   blc_h << "   /* u_int16_t b_blc;*/"<<endl;
+   blc_h << "   "<<dec<<p_isp->isp_pra->blc_pra.b_blc<<","<<endl;
+   blc_h << "}"<<endl;
+   blc_h.close();
+   return 0;
 }
 static int process_proc_blc(char *name)
 {

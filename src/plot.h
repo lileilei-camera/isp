@@ -53,9 +53,9 @@ public:
 	int border_size;
 		
 	template<class T>
-	void plot(T *y, size_t Cnt, CvScalar color, char type = '*',bool is_need_lined = true);	
+	void plot(T *y, size_t Cnt, CvScalar color, char type = '.',bool is_need_lined = true);	
 	template<class T>
-	void plot(T *x, T *y, size_t Cnt, CvScalar color, char type = '*',bool is_need_lined = true);
+	void plot(T *x, T *y, size_t Cnt, CvScalar color, char type = '.',bool is_need_lined = true);
 		
 	void xlabel(string xlabel_name, CvScalar label_color);
 	void ylabel(string ylabel_name, CvScalar label_color);

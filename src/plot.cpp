@@ -92,7 +92,7 @@ void CPlot::title(string title_name,CvScalar title_color = Scalar(0,0,0))
 	int chw = 6, chh = 10; 
 	IplImage *image = this->Figure;
 	CvFont font;
-	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,2,0.7, 0,1,CV_AA);
+	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,1.5,0.7,0,1,CV_AA);
 	int x = (this->window_width - 2 * this->border_size ) / 2 + this->border_size - ( title_name.size() / 2.0 ) * chw;
 	int y = this->border_size / 2;
 	cvPutText( image, title_name.c_str(), cvPoint( x, y), &font, title_color);
