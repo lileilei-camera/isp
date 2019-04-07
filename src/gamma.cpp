@@ -3,21 +3,30 @@
 */
 #include "isp_pipeline.h"
 
-Mat isp_gamma(Mat hdr_img,float gamma)
+Mat isp_gamma(Mat in_img,float gamma)
 {    
-    float max_val=0xffff;    
-    Mat img(hdr_img.rows,hdr_img.cols,CV_16UC1);    
-    Mat gain(hdr_img.rows,hdr_img.cols,CV_32FC1);    
-    int i=0,j=0;
-    float y_out=0;
-    float min_gain=1000000000;
-    //y_out=x^(1/gamma)  x>=0 && x<=1
-    for(i=0;i<hdr_img.rows;i++)
+    float max_val=0xffff;
+    float y_out;
+    if(in_img.type()!=CV_16UC3)
     {
-       for(j=0;j<hdr_img.cols;j++)
+       Mat null_mat;
+       log_err("err type, gamma process only rgb format");
+       return null_mat;
+    }
+    CvScalar s_in;
+    CvScalar s_out;
+    Mat img(in_img.rows,in_img.cols,CV_16UC3);    
+    int i=0,j=0;
+    //y_out=x^(1/gamma)  x>=0 && x<=1
+    for(i=0;i<in_img.rows;i++)
+    {
+       for(j=0;j<in_img.cols;j++)
        {
-           y_out=pow((float)hdr_img.at<u_int16_t>(i,j)/max_val,(1/gamma))*0xffff;
-           img.at<u_int16_t>(i,j)=(u_int16_t)y_out;
+           s_in= cvGet2D(in_img, i, j);
+           s_out.val[0]=pow(s_in.val[0]/max_val,(1/gamma))*0xffff;
+           s_out.val[1]=pow(s_in.val[1]/max_val,(1/gamma))*0xffff;
+           s_out.val[2]=pow(s_in.val[2]/max_val,(1/gamma))*0xffff;
+           cvSet2D(img,i,j,s_out);
        }
     }
     return img;

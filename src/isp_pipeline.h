@@ -82,6 +82,14 @@ typedef struct
   u_int16_t b_blc;
 }blc_pra_t;
 
+typedef struct
+{
+   float rr,rg,rb;
+   float gr,gg,rb;
+   float br,bg,bb;
+}ccm_t;
+
+
 typedef struct{
 
 }wave_denoise_pra_t;
