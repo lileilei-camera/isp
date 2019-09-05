@@ -85,7 +85,7 @@ typedef struct
 typedef struct
 {
    float rr,rg,rb;
-   float gr,gg,rb;
+   float gr,gg,gb;
    float br,bg,bb;
 }ccm_t;
 
