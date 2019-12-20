@@ -5,6 +5,7 @@
 
 int test_plot();
 
+
 typedef struct
 {
   raw_type_file_dscr_t raw_dscr;
@@ -196,6 +197,19 @@ static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char 
    dump_raw_to_png(name1,hdr_img,p_isp->raw_dscr.bayer_format);
 }
 
+Mat addGaussianNoise(Mat &srcImag,float avg,float std);
+static int  process_add_noise(char *name1,int avg,int std)
+{
+   char name[256]="";
+   cv::Mat src_img=imread(name1);
+   float sigma=(float)std/255.0;
+   float avg_f=(float)avg/255.0;
+   log_info("name1=%s avg=%d std=%d",name1,avg,std);
+   cv::Mat noise_img=addGaussianNoise(src_img,avg_f,sigma);
+   sprintf(name,"noise_avg_%d_%d",avg,std);
+   show_and_save_img(name1,(char *)name,noise_img);  
+   return 0;
+}
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 {
@@ -224,6 +238,7 @@ static int show_help()
    printf("--hdr_merge :<name>[raw picture name]\n");   
    printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
    printf("--test_cvui\n");
+   printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
    return 0;
 }
 
@@ -445,6 +460,26 @@ int main( int argc, char *argv[])
         }else
         {
            log_err("too less pra for hdr_merge_kang2014");
+        }
+    }
+    
+    arg_index=get_arg_index_by_name("--add_noise",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;
+        int avg=0;
+        int std=0;
+        sub_index=get_arg_index_by_name("--avg",argc,argv);
+        if(sub_index>0){
+            avg=atoi(argv[sub_index+1]);
+        }
+        sub_index=get_arg_index_by_name("--std",argc,argv);
+        if(sub_index>0){
+            std=atoi(argv[sub_index+1]);
+        }        
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0){
+           process_add_noise(argv[sub_index+1],avg,std);
         }
     }
 
