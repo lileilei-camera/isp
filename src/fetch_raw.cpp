@@ -207,6 +207,49 @@ int show_raw_image(char *name,cv::Mat img,bayer_format_t bayer)
   log_func_exit();
   return 0;
 }
+int dump_to_exr(char *name,char *sub_name,cv::Mat img)
+{
+  log_func_enter();
+  char *f_name=(char *)malloc(128);
+  sprintf(f_name,"%s_%s.exr",name,sub_name);
+  vector<int> compression_params;
+  compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION); 
+  compression_params.push_back(0);
+  log_info("name : %s",f_name);
+  cv::imwrite(f_name,img,compression_params);  
+  free(f_name);
+  return 0;
+}
+
+cv::Mat read_from_exr(char *name)
+{
+  return cv::imread(name,-1);  
+}
+
+cv::Mat demosic_raw_image(cv::Mat img,bayer_format_t bayer)
+{
+  cv::Mat out;
+  int code=CV_BayerBG2RGB;
+  log_func_enter();
+  switch(bayer)
+  {
+    case CV_BayerBG:
+    code=CV_BayerBG2BGR;
+    break;
+    case CV_BayerGB:
+    code=CV_BayerGB2BGR;
+    break;    
+    case CV_BayerRG:
+    code=CV_BayerRG2BGR;
+    break;    
+    case CV_BayerGR:
+    code=CV_BayerGR2BGR;
+    break;
+  }
+  cv::cvtColor(img,out,code);
+  log_func_exit();
+  return out;
+}
 
 raw_ch_t split_raw_ch(cv::Mat img,bayer_format_t bayer)
 {

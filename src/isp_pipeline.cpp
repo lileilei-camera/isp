@@ -1,7 +1,7 @@
 #include "isp_pipeline.h"
 #include "plot.h"
 
-#define DEBUG_MIPI_RAW
+//#define DEBUG_MIPI_RAW
 
 int test_plot();
 
@@ -103,41 +103,41 @@ static int process_raw_haar_denoise(char *name,int is_multi)
     raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
     p_isp->ch=split_raw_ch(raw_imag,p_isp->raw_dscr.bayer_format);
     ch_img=get_R_raw(p_isp->ch,p_isp->raw_dscr.bayer_format);    
-    show_and_save_img(name,"input",ch_img);
+    show_and_save_img(name,(char *)"input",ch_img);
     
     cv::Mat ch_img_float=get_u16_float_img(ch_img);
     cv::Mat wave1_img=haar_wavelet_decompose(ch_img_float,1,is_multi);
     cv::Mat wave1_u16_img=get_float_u16_img(wave1_img);    
-    show_and_save_img(name,"wave_1_layer",wave1_u16_img);
+    show_and_save_img(name,(char *)"wave_1_layer",wave1_u16_img);
 
     #if 1
     cv::Mat wave1_sub_img_0=get_sub_wave_img(wave1_img,0);
     cv::Mat wave2_img=haar_wavelet_decompose(wave1_sub_img_0,1,is_multi);
     cv::Mat wave2_u16_img=get_float_u16_img(wave2_img);    
-    show_and_save_img(name,"wave_2_layer",wave2_u16_img);
+    show_and_save_img(name,(char *)"wave_2_layer",wave2_u16_img);
  
     cv::Mat wave2_sub_img_0=get_sub_wave_img(wave2_img,0);
     cv::Mat wave3_img=haar_wavelet_decompose(wave2_sub_img_0,1,is_multi);
     cv::Mat wave3_u16_img=get_float_u16_img(wave3_img);    
-    show_and_save_img(name,"wave_3_layer",wave3_u16_img);
+    show_and_save_img(name,(char *)"wave_3_layer",wave3_u16_img);
 
     
     cv::Mat wave3_sub_img_0=get_sub_wave_img(wave3_img,0);
     cv::Mat wave4_img=haar_wavelet_decompose(wave3_sub_img_0,1,is_multi);
     cv::Mat wave4_u16_img=get_float_u16_img(wave4_img);    
-    show_and_save_img(name,"wave_4_layer",wave4_u16_img);
+    show_and_save_img(name,(char *)"wave_4_layer",wave4_u16_img);
 
 
     cv::Mat wave4_sub_img_0=get_sub_wave_img(wave4_img,0);
     cv::Mat wave5_img=haar_wavelet_decompose(wave4_sub_img_0,1,is_multi);
     cv::Mat wave5_u16_img=get_float_u16_img(wave5_img);    
-    show_and_save_img(name,"wave_5_layer",wave5_u16_img);
+    show_and_save_img(name,(char *)"wave_5_layer",wave5_u16_img);
 
 
     cv::Mat wave5_sub_img_0=get_sub_wave_img(wave5_img,0);
     cv::Mat wave6_img=haar_wavelet_decompose(wave5_sub_img_0,1,is_multi);
     cv::Mat wave6_u16_img=get_float_u16_img(wave6_img);    
-    show_and_save_img(name,"wave_6_layer",wave6_u16_img);
+    show_and_save_img(name,(char *)"wave_6_layer",wave6_u16_img);
     #endif
     return 0;
 }
@@ -150,15 +150,15 @@ static int process_hdr_merge(char *name)
    raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
    p_isp->ch=split_raw_ch(raw_imag,p_isp->raw_dscr.bayer_format);
    ch_img=get_R_raw(p_isp->ch,p_isp->raw_dscr.bayer_format);    
-   show_and_save_img(name,"r_ch",ch_img);
+   show_and_save_img(name,(char *)"r_ch",ch_img);
    cv::Mat l_img=get_long_exp_img(ch_img,1080/2,8);   
    cv::Mat s_img=get_short_exp_img(ch_img,1080/2,9);
-   show_and_save_img(name,"r_ch_long",l_img);   
-   show_and_save_img(name,"r_ch_short",s_img);
+   show_and_save_img(name,(char *)"r_ch_long",l_img);   
+   show_and_save_img(name,(char *)"r_ch_short",s_img);
    hdr_merge_pra_t hdr_pra;
    hdr_pra.long_exp_th=240<<8;   
    hdr_pra.long_exp_th_low=200<<8;
-   cv::Mat merg_img=merge_hdr_img(l_img,s_img,32,&hdr_pra);
+   cv::Mat merg_img=merge_hdr_img(l_img,s_img,4,&hdr_pra);
    drc_pra_t drc_pra;
    drc_pra.methed=DRC_GAMMA;
    //drc_pra.methed=DRC_GAMMA;
@@ -166,10 +166,35 @@ static int process_hdr_merge(char *name)
    drc_pra.k1=1;
    drc_pra.k2=8;
    drc_pra.k3=0.4;
-   cv::Mat hdr_img=drc_hdr_img(merg_img,32,&drc_pra);   
-   show_and_save_img(name,"r_ch_hdr",hdr_img);
+   cv::Mat hdr_img=drc_hdr_img(merg_img,4,&drc_pra);   
+   show_and_save_img(name,(char *)"r_ch_hdr",hdr_img);
 }
 
+static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char *name4)
+{
+   cv::Mat raw_imge1;   
+   cv::Mat raw_imge2;
+   cv::Mat raw_imge3;
+   cv::Mat raw_imge4;
+   float ration[3]={16,16,16};
+   isp_t *p_isp=get_isp(); 
+   raw_imge1=fetch_raw(name1,&p_isp->raw_dscr);    
+   raw_imge2=fetch_raw(name2,&p_isp->raw_dscr); 
+   raw_imge3=fetch_raw(name3,&p_isp->raw_dscr); 
+   raw_imge4=fetch_raw(name4,&p_isp->raw_dscr); 
+   
+   hdr_merge_pra_kang2014_t hdr_pra;
+   hdr_pra.rou=2.0/3.0*0xffff;
+   hdr_pra.beta=16<<8;
+   hdr_pra.deta=0.25;
+   cv::Mat merg_img=merge_hdr_img_kang2014(raw_imge1,raw_imge2,raw_imge3,raw_imge4,ration,&hdr_pra);   
+   //cv::Mat merg_img_demosic=demosic_raw_image(merg_img,p_isp->raw_dscr.bayer_format);
+   dump_to_exr(name1,(char *)"kanghdr_demosic",merg_img);
+   //cv::Mat hdr_img=drc_hdr_img_kang2014_gamma(merg_img,5.0); 
+   cv::Mat hdr_img=drc_hdr_img_kang2014_linear(merg_img);
+   show_and_save_img(name1,(char *)"kanghdr",hdr_img);   
+   dump_raw_to_png(name1,hdr_img,p_isp->raw_dscr.bayer_format);
+}
 
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
@@ -185,18 +210,19 @@ static int get_arg_index_by_name(const char *name, int argc,char *argv[])
      }
      return -1;    
 }
-
 static int show_help()
 {
    printf("--help :show this help\n");
-   printf("--fetch_raw :<name>[raw picture name] \n");
+   printf("--fetch_raw :<name>[raw picture name]\n");
+   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -byaer 2 --bit 12 :note: byaer_farmat isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]");
    printf("--get_blc_pra :<name>[blc tuning picture] \n");
    printf("--process :<raw_name> <name1> <name2> ... --end \n");
    printf("--test_plot :test the plat function \n");   
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
    printf("--plot_raw_hist :<name>[raw picture]\n");
    printf("--raw_denoise :<name>[raw picture name] --multi \n");   
-   printf("--hdr_merge :<name>[raw picture name]\n");
+   printf("--hdr_merge :<name>[raw picture name]\n");   
+   printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
    printf("--test_cvui\n");
    return 0;
 }
@@ -205,7 +231,8 @@ int main( int argc, char *argv[])
 {
     int i=0;
     isp_t *p_isp=NULL;
-    int arg_index=0;    
+    int arg_index=0;     
+    int sub_arg_index=0;
     char f_name[128];
 
     for(i=0;i<argc;i++)
@@ -229,6 +256,7 @@ int main( int argc, char *argv[])
     p_isp_server=(isp_t *)new(isp_t);
     p_isp=get_isp();
     p_isp->isp_pra=(isp_pra_t *)malloc(sizeof(isp_pra_t));
+ 
     #ifdef DEBUG_MIPI_RAW
     p_isp->raw_dscr.width=4208;
     p_isp->raw_dscr.hegiht=3120;
@@ -244,9 +272,15 @@ int main( int argc, char *argv[])
        p_isp->raw_dscr.width=1952;
        p_isp->raw_dscr.hegiht=1080;    
        p_isp->raw_dscr.bitwidth=14;
-       #else
+       #endif
+       #if 0
        p_isp->raw_dscr.width=1952;
        p_isp->raw_dscr.hegiht=2288;
+       p_isp->raw_dscr.bitwidth=12;
+       #endif
+       #if 1
+       p_isp->raw_dscr.width=1920;
+       p_isp->raw_dscr.hegiht=1080;
        p_isp->raw_dscr.bitwidth=12;
        #endif   
     p_isp->raw_dscr.is_packed=0;
@@ -265,6 +299,49 @@ int main( int argc, char *argv[])
     p_isp->raw_dscr.bayer_format=CV_BayerRG; 
     #endif
     #endif
+       
+    arg_index=get_arg_index_by_name("--save_raw_dsc",argc,argv);
+    if(arg_index>0)
+    {
+       sub_arg_index=get_arg_index_by_name("-w",argc,argv);
+       if(sub_arg_index>0){
+          p_isp->raw_dscr.width=atoi(argv[sub_arg_index+1]);
+       }
+       sub_arg_index=get_arg_index_by_name("-h",argc,argv);
+       if(sub_arg_index>0){
+          p_isp->raw_dscr.hegiht=atoi(argv[sub_arg_index+1]);
+       }
+       sub_arg_index=get_arg_index_by_name("-stride",argc,argv);
+       if(sub_arg_index>0){
+          p_isp->raw_dscr.line_length_algin=atoi(argv[sub_arg_index+1]);
+       }
+       sub_arg_index=get_arg_index_by_name("-bayer",argc,argv);
+       if(sub_arg_index>0){
+          p_isp->raw_dscr.bayer_format=(bayer_format_t)atoi(argv[sub_arg_index+1]);
+       }
+       sub_arg_index=get_arg_index_by_name("-bit",argc,argv);
+       if(sub_arg_index>0){
+          p_isp->raw_dscr.bitwidth=atoi(argv[sub_arg_index+1]);
+       }
+       sub_arg_index=get_arg_index_by_name("-dng",argc,argv);
+       if(sub_arg_index>0)
+       {
+          p_isp->raw_dscr.is_packed=0;
+       }else
+       {
+          p_isp->raw_dscr.is_packed=1;
+       }
+       save_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr));       
+    }
+    if(load_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr))<0)
+    {
+       log_err("err load raw dsc");
+       free(p_isp->isp_pra);
+       delete(p_isp);
+       return 0;
+    }
+    
+    
     cv::Mat blc_imag(p_isp->raw_dscr.hegiht,p_isp->raw_dscr.width,CV_16UC1);
     p_isp->blc_imag=blc_imag;
     
@@ -278,8 +355,8 @@ int main( int argc, char *argv[])
     arg_index=get_arg_index_by_name("--test_cvui",argc,argv);
     if(arg_index>0)
     {       
-       int cvui_test();
-       cvui_test();
+       //int cvui_test();
+       //cvui_test();
     }
     
     arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
@@ -308,7 +385,6 @@ int main( int argc, char *argv[])
     arg_index=get_arg_index_by_name("--get_raw_his",argc,argv);
     if(arg_index>0)
     {
-        int sub_arg_index=0;
         if((arg_index+1)<=(argc-1)){
            process_get_hist(argv[arg_index+1]);
            sub_arg_index=get_arg_index_by_name("--log_en",argc,argv);
@@ -358,6 +434,17 @@ int main( int argc, char *argv[])
         }else
         {
            log_err("too less pra for hdr_merge");
+        }
+    }
+    
+    arg_index=get_arg_index_by_name("--hdr_merge_kang2014",argc,argv);
+    if(arg_index>0)
+    {
+        if((arg_index+4)<=(argc-1)){
+           process_hdr_merge_kang2014(argv[arg_index+1],argv[arg_index+2],argv[arg_index+3],argv[arg_index+4]);
+        }else
+        {
+           log_err("too less pra for hdr_merge_kang2014");
         }
     }
 

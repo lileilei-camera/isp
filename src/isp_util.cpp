@@ -33,6 +33,35 @@ int load_isp_pra(void *buf,int size)
   return 0;
 }
 
+
+int save_bin(char *name,void *buf,int size)
+{
+  int fd=open(name,O_RDWR|O_CREAT);
+  if(fd<0)
+  {
+    log_err("open file failed");
+	return fd;
+  }
+  write(fd,buf,size);
+  log_info("save success");
+  close(fd);
+  return 0;
+}
+
+int load_bin(char *name,void *buf,int size)
+{
+  int fd=open(name,O_RDONLY);
+  if(fd<0)
+  {
+    log_err("open file failed,please firset gen the data");
+	return fd;
+  }
+  read(fd,buf,size);
+  close(fd);
+  return 0;
+}
+
+
 int plot_hist(char *pic_name,const char *hist_name,Mat img,float range_st, float range_end)
 {
     cvNamedWindow(pic_name,0);  

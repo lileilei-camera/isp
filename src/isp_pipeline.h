@@ -99,6 +99,13 @@ typedef struct {
 	int long_exp_th_low;
 }hdr_merge_pra_t;
 
+typedef struct {
+   float rou;
+   float beta;
+   float deta;
+}hdr_merge_pra_kang2014_t;
+
+
 enum{
 	DRC_GAMMA,
     DRC_GTM1,
@@ -155,5 +162,10 @@ Mat get_long_exp_img(Mat img,int height,int long_offset);
 Mat get_short_exp_img(Mat img,int height,int short_offset);
 Mat merge_hdr_img(Mat long_img, Mat short_img,float exp_ration,hdr_merge_pra_t *pra);
 Mat drc_hdr_img(Mat hdr_img,float exp_ration,drc_pra_t *pra);
+Mat merge_hdr_img_kang2014(Mat img1, Mat img2,Mat img3,Mat img4,float exp_ration[],hdr_merge_pra_kang2014_t *pra);
+Mat drc_hdr_img_kang2014_linear(Mat hdr_img);
+Mat drc_hdr_img_kang2014_gamma(Mat hdr_img,float gamma);
+cv::Mat demosic_raw_image(cv::Mat img,bayer_format_t bayer);
+int dump_to_exr(char *name,char *sub_name,cv::Mat img);
 #endif
 
