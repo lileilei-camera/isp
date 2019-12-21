@@ -33,6 +33,8 @@ Mat addGaussianNoise(Mat &srcImag,float avg,float std)
 	int channels = dstImage.channels();
 	int rowsNumber = dstImage.rows;
 	int colsNumber = dstImage.cols*channels;
+
+    log_info("channels=%d",channels);
 	//判断图像的连续性
 	if (dstImage.isContinuous())
 	{

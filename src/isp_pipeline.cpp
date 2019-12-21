@@ -4,6 +4,7 @@
 //#define DEBUG_MIPI_RAW
 
 int test_plot();
+int save_img(char *picname,char *func_name,Mat img);
 
 
 typedef struct
@@ -188,8 +189,10 @@ static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char 
    hdr_pra.rou=2.0/3.0*0xffff;
    hdr_pra.beta=16<<8;
    hdr_pra.deta=0.25;
+   //merg_img 32bit float
    cv::Mat merg_img=merge_hdr_img_kang2014(raw_imge1,raw_imge2,raw_imge3,raw_imge4,ration,&hdr_pra);   
    //cv::Mat merg_img_demosic=demosic_raw_image(merg_img,p_isp->raw_dscr.bayer_format);
+   //only exr format supported float format or 32int
    dump_to_exr(name1,(char *)"kanghdr_demosic",merg_img);
    //cv::Mat hdr_img=drc_hdr_img_kang2014_gamma(merg_img,5.0); 
    cv::Mat hdr_img=drc_hdr_img_kang2014_linear(merg_img);
@@ -201,10 +204,10 @@ Mat addGaussianNoise(Mat &srcImag,float avg,float std);
 static int  process_add_noise(char *name1,int avg,int std)
 {
    char name[256]="";
-   cv::Mat src_img=imread(name1);
+   cv::Mat src_img=imread(name1,CV_8U);
    float sigma=(float)std/255.0;
    float avg_f=(float)avg/255.0;
-   log_info("name1=%s avg=%d std=%d",name1,avg,std);
+   log_info("name1=%s avg=%d std=%d src_img.chans=%d",name1,avg,std,src_img.channels());
    cv::Mat noise_img=addGaussianNoise(src_img,avg_f,sigma);
    sprintf(name,"noise_avg_%d_%d",avg,std);
    show_and_save_img(name1,(char *)name,noise_img);  
@@ -222,7 +225,7 @@ static int  process_rgb_to_yuv(char *name1)
    show_and_save_img(name1,(char *)name,src_img); 
 
    sprintf(name,"w_%d_h_%d.yuv",src_img.cols,src_img.rows);
-   cvtColor(src_img,yuv_img,CV_BGR2YUV); 
+   cv::cvtColor(src_img,yuv_img,CV_BGR2YUV); 
    show_and_save_img(name1,(char *)name,yuv_img); 
    save_yuv_img(name1,name,yuv_img);
    split(yuv_img,channels);
@@ -237,6 +240,60 @@ static int  process_rgb_to_yuv(char *name1)
    sprintf(name,"w_%d_h_%d.v",src_img.cols,src_img.rows);
    show_and_save_img(name1,(char *)name,channels.at(2));  
    return 0;
+}
+
+static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
+{
+  int i=0;
+  int j=0;
+  cv::vector<Mat> all_block;
+  cv::Mat sub_mesh_block;
+  char name[256]="";
+  cv::Mat src_img=imread(name1);
+  int block_w=src_img.cols/mesh_size;
+  int block_h=src_img.rows/mesh_size;
+  for(i=0;i<block_h;i++)
+  {
+      for(j=0;j<block_w;j++)
+      {         
+         log_info("[%d][%d]",i,j);
+         sub_mesh_block=src_img(Rect(j*mesh_size,i*mesh_size,mesh_size,mesh_size));
+         all_block.push_back(sub_mesh_block); 
+         //sprintf(name,"_%d_%d_",i,j);
+         //save_img(name1,(char *)name,sub_mesh_block);   
+         //show_and_save_img(name1,(char *)name,sub_mesh_block);  
+      }
+  }
+  return all_block;
+}
+
+static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,int th)
+{
+   char name[256]="";
+   cv::vector<Mat> ref_match;
+   double odis=0;
+   int i=0;
+   CvMat ref=ref_block;
+   CvMat all;
+   for(i=0;i<all_block.size();i++)
+   {
+       all=all_block[i];       
+       odis=cvNorm(&ref, &all, CV_L2);
+       //log_info("odis=%f",odis);
+       if(odis<th)
+       {
+          log_info("i=%d odis=%d",i,(int)odis);
+          ref_match.push_back(all_block[i]);
+          sprintf(name,"_%d_dis=%d_",i,(int)odis);
+          save_img((char *)"../file/pic/mesh/ref_match",(char *)name,all_block[i]);    
+       }
+   }
+   return ref_match;
+}
+static int paint_match_block_to_orig(char *name1,Mat ref_block,cv::vector<Mat> match_block)
+{  
+     cv::Mat src_img=imread(name1);
+     
 }
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
@@ -267,7 +324,8 @@ static int show_help()
    printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
    printf("--test_cvui\n");
    printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
-   printf("--rgbtoyuv --name [name]");
+   printf("--rgbtoyuv --name [name] \n");
+   printf("--mesh_grid --name [name] --size [n*n] --th [th]: eg --mesh_grid 64 --th 100 \n");
    return 0;
 }
 
@@ -519,6 +577,32 @@ int main( int argc, char *argv[])
         if(sub_index>0){
            process_rgb_to_yuv(argv[sub_index+1]);
         }
+    }
+   
+    arg_index=get_arg_index_by_name("--mesh_grid",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0; 
+        int mesh_size=64;
+        int th=200;
+        char *name=NULL;
+        cv::vector<Mat> all_block;        
+        cv::vector<Mat> ref_match;
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0){
+           name=argv[sub_index+1];
+        }
+        sub_index=get_arg_index_by_name("--size",argc,argv);
+        if(sub_index>0){
+           mesh_size=atoi(argv[sub_index+1]);
+        }
+        sub_index=get_arg_index_by_name("--th",argc,argv);
+        if(sub_index>0){
+           th=atoi(argv[sub_index+1]);
+        }
+        all_block=get_all_mesh_block(name,mesh_size);
+        ref_match=get_match_block(all_block[0],all_block,th);
+        
     }
     
     arg_index=get_arg_index_by_name("--process",argc,argv);

@@ -122,10 +122,21 @@ int show_and_save_img(char *picname,char *func_name,Mat img)
    free(f_name);
 }
 
+int save_img(char *picname,char *func_name,Mat img)
+{
+   char *f_name=(char *)malloc(128);     
+   sprintf(f_name,"%s_%s.png",picname,func_name);    
+   vector<int> compression_params;
+   compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION); 
+   compression_params.push_back(0);   
+   cv::imwrite(f_name,img,compression_params);    
+   free(f_name);
+}
+
 int save_yuv_img(char *picname,char *func_name,Mat img)
 {
    char *f_name=(char *)malloc(128);     
-   sprintf(f_name,"%s_%s",picname,func_name);    
+   sprintf(f_name,"%s_%s",picname,func_name);     
    save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
    free(f_name);
 }
