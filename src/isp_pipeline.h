@@ -167,5 +167,6 @@ Mat drc_hdr_img_kang2014_linear(Mat hdr_img);
 Mat drc_hdr_img_kang2014_gamma(Mat hdr_img,float gamma);
 cv::Mat demosic_raw_image(cv::Mat img,bayer_format_t bayer);
 int dump_to_exr(char *name,char *sub_name,cv::Mat img);
+int save_yuv_img(char *picname,char *func_name,Mat img);
 #endif
 

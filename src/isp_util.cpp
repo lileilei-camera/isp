@@ -43,7 +43,7 @@ int save_bin(char *name,void *buf,int size)
 	return fd;
   }
   write(fd,buf,size);
-  log_info("save success");
+  log_info("save success %s %d",name,size);
   close(fd);
   return 0;
 }
@@ -121,6 +121,36 @@ int show_and_save_img(char *picname,char *func_name,Mat img)
    cv::imwrite(f_name,img,compression_params);    
    free(f_name);
 }
+
+int save_yuv_img(char *picname,char *func_name,Mat img)
+{
+   char *f_name=(char *)malloc(128);     
+   sprintf(f_name,"%s_%s",picname,func_name);    
+   save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
+   free(f_name);
+}
+
+int save_yuv_img_planner(char *picname,char *func_name,vector<Mat> channels)
+{
+   int i=0;
+   char *f_name=(char *)malloc(128);     
+   sprintf(f_name,"%s_%s_planner",picname,func_name);    
+   int fd=open(f_name,O_RDWR|O_CREAT);
+   if(fd<0)
+   {
+    log_err("open file failed");    
+    free(f_name);   
+ 	return fd;
+   }
+   for(i=0;i<3;i++){
+       write(fd,channels.at(i).data,channels.at(i).cols*channels.at(i).rows*channels.at(i).elemSize());   
+   }
+   log_info("save success %s",f_name);
+   close(fd);
+   free(f_name);   
+   return 0;
+}
+
 
 Mat get_float_u16_img(Mat img)
 {

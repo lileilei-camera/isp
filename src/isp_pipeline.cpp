@@ -210,6 +210,34 @@ static int  process_add_noise(char *name1,int avg,int std)
    show_and_save_img(name1,(char *)name,noise_img);  
    return 0;
 }
+int save_yuv_img_planner(char *picname,char *func_name,vector<Mat> channels);
+static int  process_rgb_to_yuv(char *name1)
+{
+   char name[256]="";
+   cv::Mat src_img=imread(name1);
+   cv::Mat yuv_img;   
+   vector<Mat> channels;
+
+   sprintf(name,"w_%d_h_%d.rgb",src_img.cols,src_img.rows);
+   show_and_save_img(name1,(char *)name,src_img); 
+
+   sprintf(name,"w_%d_h_%d.yuv",src_img.cols,src_img.rows);
+   cvtColor(src_img,yuv_img,CV_BGR2YUV); 
+   show_and_save_img(name1,(char *)name,yuv_img); 
+   save_yuv_img(name1,name,yuv_img);
+   split(yuv_img,channels);
+   save_yuv_img_planner(name1,name,channels);
+   
+   sprintf(name,"w_%d_h_%d.y",src_img.cols,src_img.rows);
+   show_and_save_img(name1,(char *)name,channels.at(0));  
+   
+   sprintf(name,"w_%d_h_%d.u",src_img.cols,src_img.rows);
+   show_and_save_img(name1,(char *)name,channels.at(1));  
+
+   sprintf(name,"w_%d_h_%d.v",src_img.cols,src_img.rows);
+   show_and_save_img(name1,(char *)name,channels.at(2));  
+   return 0;
+}
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 {
@@ -239,6 +267,7 @@ static int show_help()
    printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
    printf("--test_cvui\n");
    printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
+   printf("--rgbtoyuv --name [name]");
    return 0;
 }
 
@@ -482,7 +511,15 @@ int main( int argc, char *argv[])
            process_add_noise(argv[sub_index+1],avg,std);
         }
     }
-
+    arg_index=get_arg_index_by_name("--rgbtoyuv",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;     
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0){
+           process_rgb_to_yuv(argv[sub_index+1]);
+        }
+    }
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
