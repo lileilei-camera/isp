@@ -242,6 +242,32 @@ static int  process_rgb_to_yuv(char *name1)
    return 0;
 }
 
+static cv::vector<Mat> get_all_mesh_block_by_step(char *name1,int mesh_size,int step)
+{
+  int i=0;
+  int j=0;
+  cv::vector<Mat> all_block;
+  cv::Mat sub_mesh_block;
+  char name[256]="";
+  cv::Mat src_img=imread(name1);
+  int block_w=(src_img.cols-mesh_size)/step;
+  int block_h=(src_img.rows-mesh_size)/step;
+  for(i=0;i<block_h;i++)
+  {
+      for(j=0;j<block_w;j++)
+      {         
+         //log_info("[%d][%d]",i,j);
+         sub_mesh_block=src_img(Rect(j*step,i*step,mesh_size,mesh_size));
+         all_block.push_back(sub_mesh_block); 
+         //sprintf(name,"_%d_%d_",i,j);
+         //save_img(name1,(char *)name,sub_mesh_block);   
+         //show_and_save_img(name1,(char *)name,sub_mesh_block);  
+      }
+  }
+  return all_block;
+}
+
+
 static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
 {
   int i=0;
@@ -256,7 +282,7 @@ static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
   {
       for(j=0;j<block_w;j++)
       {         
-         log_info("[%d][%d]",i,j);
+         //log_info("[%d][%d]",i,j);
          sub_mesh_block=src_img(Rect(j*mesh_size,i*mesh_size,mesh_size,mesh_size));
          all_block.push_back(sub_mesh_block); 
          //sprintf(name,"_%d_%d_",i,j);
@@ -280,20 +306,32 @@ static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,i
        all=all_block[i];       
        odis=cvNorm(&ref, &all, CV_L2);
        //log_info("odis=%f",odis);
-       if(odis<th)
+       if(odis<th&&odis!=0)
        {
           log_info("i=%d odis=%d",i,(int)odis);
           ref_match.push_back(all_block[i]);
           sprintf(name,"_%d_dis=%d_",i,(int)odis);
-          save_img((char *)"../file/pic/mesh/ref_match",(char *)name,all_block[i]);    
+          //save_img((char *)"../file/pic/mesh/ref_match",(char *)name,all_block[i]);    
        }
    }
    return ref_match;
 }
 static int paint_match_block_to_orig(char *name1,Mat ref_block,cv::vector<Mat> match_block)
 {  
+     int i=0;
      cv::Mat src_img=imread(name1);
-     
+     int w=ref_block.cols;
+     int h=ref_block.rows;
+     Size wholeSize;
+     Point ofs;
+     ref_block.locateROI(wholeSize,ofs);             
+     rectangle(src_img,Rect(ofs.x,ofs.y,w,h),Scalar(0,0,255),1,8,0);        
+     for(i=0;i<match_block.size();i++)         
+     {         
+        match_block[i].locateROI(wholeSize,ofs);        
+        rectangle(src_img,Rect(ofs.x,ofs.y,w,h),Scalar(255,0,0),1,8,0);        
+     }
+     save_img(name1,(char *)"with_rect",src_img);    
 }
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
@@ -602,6 +640,7 @@ int main( int argc, char *argv[])
         }
         all_block=get_all_mesh_block(name,mesh_size);
         ref_match=get_match_block(all_block[0],all_block,th);
+        paint_match_block_to_orig(name,all_block[0], ref_match);
         
     }
     

@@ -106,7 +106,8 @@ Mat multi_haar_wavelet_decompose(Mat input_img,int layers)
           {                 
              temp_img.at<float>(i,j)=((float)input_img.at<float>(i,j)+(float)input_img.at<float>(i,j+1))/2;                 
              temp_img.at<float>(i,wave_cols/2+j)=((float)input_img.at<float>(i,j)-(float)input_img.at<float>(i,j+1))/2;
-          }               
+          }
+          //process last rows pix
           temp_img.at<float>(i,j)=((float)input_img.at<float>(i,j)+(float)input_img.at<float>(i,j))/2;                 
           temp_img.at<float>(i,wave_cols/2+j)=((float)input_img.at<float>(i,j)-(float)input_img.at<float>(i,j))/2;
       }
