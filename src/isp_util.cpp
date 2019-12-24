@@ -48,6 +48,16 @@ int save_bin(char *name,void *buf,int size)
   return 0;
 }
 
+int save_mat_to_bin(char *picname,char *func_name,Mat img)
+{
+   char *f_name=(char *)malloc(128);     
+   sprintf(f_name,"%s_%s.bin",picname,func_name);     
+   log_info("cols=%d rows=%d elemSize=%ld channels=%d",img.cols,img.rows,img.elemSize(),img.channels());
+   save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
+   free(f_name);
+}
+
+
 int load_bin(char *name,void *buf,int size)
 {
   int fd=open(name,O_RDONLY);

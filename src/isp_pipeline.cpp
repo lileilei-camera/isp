@@ -97,6 +97,7 @@ static int process_plot_raw_hist(char *name)
    return 0;
 }
 
+
 static int process_raw_haar_denoise(char *name,int is_multi)
 {
     cv::Mat raw_imag;
@@ -242,7 +243,7 @@ static int  process_rgb_to_yuv(char *name1)
    return 0;
 }
 
-static cv::vector<Mat> get_all_mesh_block_by_step(char *name1,int mesh_size,int step)
+static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size,int step)
 {
   int i=0;
   int j=0;
@@ -251,7 +252,8 @@ static cv::vector<Mat> get_all_mesh_block_by_step(char *name1,int mesh_size,int 
   char name[256]="";
   cv::Mat src_img=imread(name1);
   int block_w=(src_img.cols-mesh_size)/step;
-  int block_h=(src_img.rows-mesh_size)/step;
+  int block_h=(src_img.rows-mesh_size)/step;  
+  log_info("we will construct %d block with step=%d mesh=%d",block_w*block_h,step,mesh_size);
   for(i=0;i<block_h;i++)
   {
       for(j=0;j<block_w;j++)
@@ -278,6 +280,7 @@ static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
   cv::Mat src_img=imread(name1);
   int block_w=src_img.cols/mesh_size;
   int block_h=src_img.rows/mesh_size;
+  log_info("we will construct %d block with step=%d mesh_size=%d",block_w*block_h,mesh_size,mesh_size);
   for(i=0;i<block_h;i++)
   {
       for(j=0;j<block_w;j++)
@@ -299,6 +302,7 @@ static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,i
    cv::vector<Mat> ref_match;
    double odis=0;
    int i=0;
+   int block_count=0;
    CvMat ref=ref_block;
    CvMat all;
    for(i=0;i<all_block.size();i++)
@@ -308,12 +312,13 @@ static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,i
        //log_info("odis=%f",odis);
        if(odis<th&&odis!=0)
        {
-          log_info("i=%d odis=%d",i,(int)odis);
+          block_count++;
           ref_match.push_back(all_block[i]);
           sprintf(name,"_%d_dis=%d_",i,(int)odis);
           //save_img((char *)"../file/pic/mesh/ref_match",(char *)name,all_block[i]);    
        }
    }
+   log_info("match block_count=%d in %ld",block_count,all_block.size());
    return ref_match;
 }
 static int paint_match_block_to_orig(char *name1,Mat ref_block,cv::vector<Mat> match_block)
@@ -333,6 +338,116 @@ static int paint_match_block_to_orig(char *name1,Mat ref_block,cv::vector<Mat> m
      }
      save_img(name1,(char *)"with_rect",src_img);    
 }
+
+static int process_dct(char *name1)
+{
+   char name[256]="";
+   cv::Mat src_img=imread(name1,CV_8U);
+   src_img.convertTo(src_img, CV_32F, 1.0/255);
+   Mat src_dct;
+   dct(src_img, src_dct);
+   sprintf(name,"dct");
+   show_and_save_img(name1,(char *)name,abs(src_dct));  
+   //we print the dect mat
+   //cout<<endl<<src_dct(Rect(0,0,64,64))<<endl<<endl;
+   
+   return 0;
+}
+
+static int process_haar_denoise(char *name1,int is_multi)
+{
+    char name[256]="";
+    cv::Mat src_img=imread(name1,CV_8U);
+    src_img.convertTo(src_img, CV_32F, 1.0/255);
+    cv::Mat wave1_img=haar_wavelet_decompose(src_img,1,is_multi); 
+    cv::Mat wave1_sub_img_0=get_sub_wave_img(wave1_img,0);
+    wave1_img=abs(wave1_img);
+    wave1_img.convertTo(wave1_img, CV_8U, 255);
+    sprintf(name,"haar");    
+    show_and_save_img(name1,(char *)name,wave1_img);  
+
+    cv::Mat wave2_img=haar_wavelet_decompose(wave1_sub_img_0,1,is_multi); 
+    cv::Mat wave2_sub_img_0=get_sub_wave_img(wave2_img,0);
+    wave2_img=abs(wave2_img);
+    wave2_img.convertTo(wave2_img, CV_8U, 255);
+    sprintf(name,"haar2");    
+    show_and_save_img(name1,(char *)name,wave2_img);  
+
+    
+    cv::Mat wave3_img=haar_wavelet_decompose(wave2_sub_img_0,1,is_multi); 
+    cv::Mat wave3_sub_img_0=get_sub_wave_img(wave3_img,0);
+    wave3_img=abs(wave3_img);
+    wave3_img.convertTo(wave3_img, CV_8U, 255);
+    sprintf(name,"haar3");    
+    show_and_save_img(name1,(char *)name,wave3_img);  
+
+
+    cv::Mat wave4_img=haar_wavelet_decompose(wave3_sub_img_0,1,is_multi); 
+    cv::Mat wave4_sub_img_0=get_sub_wave_img(wave4_img,0);
+    wave4_img=abs(wave4_img);
+    wave4_img.convertTo(wave4_img, CV_8U, 255);
+    sprintf(name,"haar4");    
+    show_and_save_img(name1,(char *)name,wave4_img); 
+
+
+    cv::Mat wave5_img=haar_wavelet_decompose(wave4_sub_img_0,1,is_multi); 
+    cv::Mat wave5_sub_img_0=get_sub_wave_img(wave5_img,0);
+    wave5_img=abs(wave5_img);
+    wave5_img.convertTo(wave5_img, CV_8U, 255);
+    sprintf(name,"haar5");    
+    show_and_save_img(name1,(char *)name,wave5_img); 
+
+    
+    cv::Mat wave6_img=haar_wavelet_decompose(wave5_sub_img_0,1,is_multi); 
+    wave6_img=abs(wave6_img);
+    wave6_img.convertTo(wave6_img, CV_8U, 255);
+    sprintf(name,"haar6");    
+    show_and_save_img(name1,(char *)name,wave6_img); 
+
+}
+
+int save_mat_to_bin(char *picname,char *func_name,Mat img);
+static int process_convert(char *name1,char *to,int save_to_bin)
+{
+   char name[256]="";
+   cv::Mat src_img=imread(name1);
+   Mat dst_img;
+   string to_(to);
+   if(to_=="rgb565"){
+       cv::cvtColor(src_img,dst_img,CV_BGR2BGR565); 
+   }else if(to_=="rgb1555")
+   {
+       cv::cvtColor(src_img,dst_img,CV_BGR2BGR555); 
+       //we add the alfa 1 to the picture
+       int i=0,j=0;
+       for(i=0;i<dst_img.rows;i++)
+       {
+          for(j=0;j<dst_img.cols;j++)
+          {
+            if((j<dst_img.cols/4)||j>dst_img.cols/4*3)
+            {
+                dst_img.ptr<u_int16_t>(i)[j]=dst_img.ptr<u_int16_t>(i)[j]|0x8000;
+            }else
+            {               
+                dst_img.ptr<u_int16_t>(i)[j]=dst_img.ptr<u_int16_t>(i)[j]&(~0x8000);
+            }
+          }
+       }
+   }else
+   {
+      cout<<"err not supported str:"<<to_<<endl;
+   }
+   sprintf(name,"%s",to_.c_str());
+   //show_and_save_img(name1,(char *)name,dst_img);  
+   //save_img(name1,(char *)name,dst_img); 
+   if(save_to_bin)
+   {
+      save_mat_to_bin(name1,name,dst_img);
+   }
+   
+   return 0;
+}
+
 
 static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 {
@@ -363,7 +478,10 @@ static int show_help()
    printf("--test_cvui\n");
    printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
    printf("--rgbtoyuv --name [name] \n");
-   printf("--mesh_grid --name [name] --size [n*n] --th [th]: eg --mesh_grid 64 --th 100 \n");
+   printf("--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n");
+   printf("--dct --name [name] \n");   
+   printf("--haar --name [name] --multi [b_multi]\n");   
+   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin \n");
    return 0;
 }
 
@@ -623,6 +741,7 @@ int main( int argc, char *argv[])
         int sub_index=0; 
         int mesh_size=64;
         int th=200;
+        int skip=64;
         char *name=NULL;
         cv::vector<Mat> all_block;        
         cv::vector<Mat> ref_match;
@@ -632,17 +751,83 @@ int main( int argc, char *argv[])
         }
         sub_index=get_arg_index_by_name("--size",argc,argv);
         if(sub_index>0){
-           mesh_size=atoi(argv[sub_index+1]);
+           skip=mesh_size=atoi(argv[sub_index+1]);
         }
         sub_index=get_arg_index_by_name("--th",argc,argv);
         if(sub_index>0){
            th=atoi(argv[sub_index+1]);
         }
-        all_block=get_all_mesh_block(name,mesh_size);
+        sub_index=get_arg_index_by_name("--skip",argc,argv);
+        if(sub_index>0){
+           skip=atoi(argv[sub_index+1]);
+        }
+        if(skip==mesh_size){
+            all_block=get_all_mesh_block(name,mesh_size);
+        }else
+        {
+            all_block=get_all_mesh_block(name,mesh_size,skip);
+        }
         ref_match=get_match_block(all_block[0],all_block,th);
         paint_match_block_to_orig(name,all_block[0], ref_match);
         
     }
+    arg_index=get_arg_index_by_name("--dct",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;
+        char *name=NULL;
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0)
+        {
+            name=argv[sub_index+1];
+        }        
+        process_dct(name);
+    }   
+
+    arg_index=get_arg_index_by_name("--haar",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;
+        int multi=1;
+        char *name=NULL;
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0)
+        {
+            name=argv[sub_index+1];
+        }   
+        sub_index=get_arg_index_by_name("--multi",argc,argv);
+        if(sub_index>0)
+        {
+            multi=atoi(argv[sub_index+1]);
+        } 
+        process_haar_denoise(name,multi);
+    } 
+    
+    arg_index=get_arg_index_by_name("--convert_to",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;
+        char *name=NULL;
+        char *to=NULL;
+        int to_bin=0;
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0)
+        {
+            name=argv[sub_index+1];
+        }
+        sub_index=get_arg_index_by_name("--to",argc,argv);
+        if(sub_index>0)
+        {
+            to=argv[sub_index+1];
+        } 
+        sub_index=get_arg_index_by_name("--save_to_bin",argc,argv);
+        if(sub_index>0)
+        {
+            to_bin=1;
+        } 
+        process_convert(name,to,to_bin);
+    }
+
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
