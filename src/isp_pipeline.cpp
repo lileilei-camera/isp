@@ -2,6 +2,7 @@
 #include "plot.h"
 
 //#define DEBUG_MIPI_RAW
+int plot_test();
 
 int save_img(char *picname,char *func_name,Mat img);
 
@@ -493,7 +494,8 @@ static int show_help()
    printf("--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n");
    printf("--dct --name [name] \n");   
    printf("--haar --name [name] --multi [b_multi]\n");   
-   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");
+   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");   
+   printf("--plot2d :run plot 2d demo\n");
    return 0;
 }
 
@@ -833,6 +835,12 @@ int main( int argc, char *argv[])
         } 
         process_convert(name,to,save_to_bin,w,h);
     }
+
+    arg_index=get_arg_index_by_name("--plot2d",argc,argv);
+    if(arg_index>0)
+    {      
+        plot_test();
+    }   
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
