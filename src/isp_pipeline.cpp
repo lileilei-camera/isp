@@ -407,17 +407,25 @@ static int process_haar_denoise(char *name1,int is_multi)
 }
 
 int save_mat_to_bin(char *picname,char *func_name,Mat img);
-static int process_convert(char *name1,char *to,int save_to_bin)
+static int process_convert(char *name1,char *to,int save_to_bin,int o_w,int o_h)
 {
    char name[256]="";
    cv::Mat src_img=imread(name1);
    Mat dst_img;
    string to_(to);
+   Mat scaler_img;
+
+   if(o_w&&o_h)
+   {     
+     cv::resize(src_img,scaler_img,Size(o_w,o_h));
+   }
+   show_and_save_img(name1,(char *)"scaler img",scaler_img); 
+   
    if(to_=="rgb565"){
-       cv::cvtColor(src_img,dst_img,CV_BGR2BGR565); 
+       cv::cvtColor(scaler_img,dst_img,CV_BGR2BGR565); 
    }else if(to_=="rgb1555")
    {
-       cv::cvtColor(src_img,dst_img,CV_BGR2BGR555); 
+       cv::cvtColor(scaler_img,dst_img,CV_BGR2BGR555); 
        //we add the alfa 1 to the picture
        int i=0,j=0;
        for(i=0;i<dst_img.rows;i++)
@@ -437,14 +445,21 @@ static int process_convert(char *name1,char *to,int save_to_bin)
    {
       cout<<"err not supported str:"<<to_<<endl;
    }
-   sprintf(name,"%s",to_.c_str());
-   //show_and_save_img(name1,(char *)name,dst_img);  
-   //save_img(name1,(char *)name,dst_img); 
-   if(save_to_bin)
+   if(o_w&&o_h)
+   {    
+       sprintf(name,"%s_%d_%d",to_.c_str(),o_w,o_h);
+       if(save_to_bin)
+       {
+           save_mat_to_bin(name1,name,dst_img);
+       }
+   }else
    {
-      save_mat_to_bin(name1,name,dst_img);
+       sprintf(name,"%s",to_.c_str());
+       if(save_to_bin)
+       {
+           save_mat_to_bin(name1,name,dst_img);
+       }
    }
-   
    return 0;
 }
 
@@ -481,7 +496,7 @@ static int show_help()
    printf("--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n");
    printf("--dct --name [name] \n");   
    printf("--haar --name [name] --multi [b_multi]\n");   
-   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin \n");
+   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");
    return 0;
 }
 
@@ -809,7 +824,8 @@ int main( int argc, char *argv[])
         int sub_index=0;
         char *name=NULL;
         char *to=NULL;
-        int to_bin=0;
+        int save_to_bin=0;        
+        int w=0,h=0;
         sub_index=get_arg_index_by_name("--name",argc,argv);
         if(sub_index>0)
         {
@@ -823,11 +839,16 @@ int main( int argc, char *argv[])
         sub_index=get_arg_index_by_name("--save_to_bin",argc,argv);
         if(sub_index>0)
         {
-            to_bin=1;
+            save_to_bin=1;
+        }
+        sub_index=get_arg_index_by_name("--size",argc,argv);
+        if(sub_index>0)
+        {
+             w=atoi(argv[sub_index+1]);
+             h=atoi(argv[sub_index+2]);
         } 
-        process_convert(name,to,to_bin);
+        process_convert(name,to,save_to_bin,w,h);
     }
-
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
