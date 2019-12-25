@@ -480,7 +480,7 @@ static int show_help()
 {
    printf("--help :show this help\n");
    printf("--fetch_raw :<name>[raw picture name]\n");
-   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -byaer 2 --bit 12 :note: byaer_farmat isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]");
+   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -byaer 2 --bit 12 :note: byaer_farmat isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
    printf("--get_blc_pra :<name>[blc tuning picture] \n");
    printf("--process :<raw_name> <name1> <name2> ... --end \n");
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
@@ -601,7 +601,8 @@ int main( int argc, char *argv[])
        {
           p_isp->raw_dscr.is_packed=1;
        }
-       save_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr));       
+       save_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr)); 
+       return 0; 
     }
     if(load_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr))<0)
     {
