@@ -1,6 +1,7 @@
 #ifndef __ISP_PIPELINE_H__
 #define __ISP_PIPELINE_H__
 #include "cv.h"
+#include "opencv2/opencv.hpp"
 #include "highgui.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,9 @@
 #include <unistd.h>
 #include<fstream>
 #include<iostream>
+#include"opencv2/imgproc/imgproc.hpp"
 
+using namespace std;
 using namespace cv;
 
 #define ALIGN_TO(size,n) ((size+(n-1))&(~(n-1)))

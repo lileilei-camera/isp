@@ -149,7 +149,7 @@ int dump_raw_to_png(char *name,cv::Mat img,bayer_format_t bayer)
   log_func_enter();
   char *f_name=(char *)malloc(128);
   sprintf(f_name,"%s.png",name);
-  vector<int> compression_params;
+  std::vector<int> compression_params;
   compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION); 
   compression_params.push_back(0);
   log_info("name : %s",f_name);
@@ -212,7 +212,7 @@ int dump_to_exr(char *name,char *sub_name,cv::Mat img)
   log_func_enter();
   char *f_name=(char *)malloc(128);
   sprintf(f_name,"%s_%s.exr",name,sub_name);
-  vector<int> compression_params;
+  std::vector<int> compression_params;
   compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION); 
   compression_params.push_back(0);
   log_info("name : %s",f_name);

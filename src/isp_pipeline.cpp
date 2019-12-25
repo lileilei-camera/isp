@@ -3,7 +3,6 @@
 
 //#define DEBUG_MIPI_RAW
 
-int test_plot();
 int save_img(char *picname,char *func_name,Mat img);
 
 
@@ -243,11 +242,11 @@ static int  process_rgb_to_yuv(char *name1)
    return 0;
 }
 
-static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size,int step)
+static vector<Mat> get_all_mesh_block(char *name1,int mesh_size,int step)
 {
   int i=0;
   int j=0;
-  cv::vector<Mat> all_block;
+  vector<Mat> all_block;
   cv::Mat sub_mesh_block;
   char name[256]="";
   cv::Mat src_img=imread(name1);
@@ -270,11 +269,11 @@ static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size,int step)
 }
 
 
-static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
+static vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
 {
   int i=0;
   int j=0;
-  cv::vector<Mat> all_block;
+  vector<Mat> all_block;
   cv::Mat sub_mesh_block;
   char name[256]="";
   cv::Mat src_img=imread(name1);
@@ -296,10 +295,10 @@ static cv::vector<Mat> get_all_mesh_block(char *name1,int mesh_size)
   return all_block;
 }
 
-static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,int th)
+static vector<Mat> get_match_block(Mat ref_block,vector<Mat> all_block,int th)
 {
    char name[256]="";
-   cv::vector<Mat> ref_match;
+   vector<Mat> ref_match;
    double odis=0;
    int i=0;
    int block_count=0;
@@ -321,7 +320,7 @@ static cv::vector<Mat> get_match_block(Mat ref_block,cv::vector<Mat> all_block,i
    log_info("match block_count=%d in %ld",block_count,all_block.size());
    return ref_match;
 }
-static int paint_match_block_to_orig(char *name1,Mat ref_block,cv::vector<Mat> match_block)
+static int paint_match_block_to_orig(char *name1,Mat ref_block,vector<Mat> match_block)
 {  
      int i=0;
      cv::Mat src_img=imread(name1);
@@ -484,13 +483,11 @@ static int show_help()
    printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -byaer 2 --bit 12 :note: byaer_farmat isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]");
    printf("--get_blc_pra :<name>[blc tuning picture] \n");
    printf("--process :<raw_name> <name1> <name2> ... --end \n");
-   printf("--test_plot :test the plat function \n");   
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
    printf("--plot_raw_hist :<name>[raw picture]\n");
    printf("--raw_denoise :<name>[raw picture name] --multi \n");   
    printf("--hdr_merge :<name>[raw picture name]\n");   
    printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
-   printf("--test_cvui\n");
    printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
    printf("--rgbtoyuv --name [name] \n");
    printf("--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n");
@@ -618,20 +615,6 @@ int main( int argc, char *argv[])
     cv::Mat blc_imag(p_isp->raw_dscr.hegiht,p_isp->raw_dscr.width,CV_16UC1);
     p_isp->blc_imag=blc_imag;
     
-    arg_index=get_arg_index_by_name("--test_plot",argc,argv);
-    if(arg_index>0)
-    {       
-       int plot_drc_gtm1(float k1,float k2,float k3,float gain);
-       plot_drc_gtm1(1,8,0.4,1);
-    }
-
-    arg_index=get_arg_index_by_name("--test_cvui",argc,argv);
-    if(arg_index>0)
-    {       
-       //int cvui_test();
-       //cvui_test();
-    }
-    
     arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
     if(arg_index>0)
     {
@@ -758,8 +741,8 @@ int main( int argc, char *argv[])
         int th=200;
         int skip=64;
         char *name=NULL;
-        cv::vector<Mat> all_block;        
-        cv::vector<Mat> ref_match;
+        vector<Mat> all_block;        
+        vector<Mat> ref_match;
         sub_index=get_arg_index_by_name("--name",argc,argv);
         if(sub_index>0){
            name=argv[sub_index+1];
