@@ -14,10 +14,11 @@ isp_pipeline.cpp
 blc.cpp 
 raw_hist.cpp 
 isp_util.cpp 
-plot.cpp 
 raw_denoise.cpp 
 sony_dol_hdr.cpp 
 add_noise.cpp
+plot_demo.cpp
+bm3d_image_denoising.cpp
 )
 
 TARGET_LINK_LIBRARIES(isp ${OpenCV_LIBS})

@@ -3,6 +3,7 @@
 
 //#define DEBUG_MIPI_RAW
 int plot_test();
+cv::Mat bm3d_test(char *infile,float sigma,int templateWindowSize,int searchWindowSize);
 
 int save_img(char *picname,char *func_name,Mat img);
 
@@ -496,6 +497,7 @@ static int show_help()
    printf("--haar --name [name] --multi [b_multi]\n");   
    printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");   
    printf("--plot2d :run plot 2d demo\n");
+   printf("--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n");
    return 0;
 }
 
@@ -836,11 +838,44 @@ int main( int argc, char *argv[])
         process_convert(name,to,save_to_bin,w,h);
     }
 
+    arg_index=get_arg_index_by_name("--bm3d_image_denoising",argc,argv);
+    if(arg_index>0)
+    {      
+        int sub_index=0;
+        float sigma=0;
+        int block_size=8;
+        int search_windows_size=64;
+        char *name=NULL;
+        sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0)
+        {
+             name=argv[sub_index+1];
+        } 
+        sub_index=get_arg_index_by_name("--sigma",argc,argv);
+        if(sub_index>0)
+        {
+             sigma=atof(argv[sub_index+1]);
+        }
+        sub_index=get_arg_index_by_name("--block_size",argc,argv);
+        if(sub_index>0)
+        {
+             block_size=atof(argv[sub_index+1]);
+        } 
+        sub_index=get_arg_index_by_name("--search_windows_size",argc,argv);
+        if(sub_index>0)
+        {
+             search_windows_size=atof(argv[sub_index+1]);
+        }
+        Mat denoise_img=bm3d_test(name,sigma,block_size,search_windows_size);
+        show_and_save_img(name,(char *)"bm3d_denoise",denoise_img); 
+        
+    }
+   
     arg_index=get_arg_index_by_name("--plot2d",argc,argv);
     if(arg_index>0)
     {      
         plot_test();
-    }   
+    } 
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
