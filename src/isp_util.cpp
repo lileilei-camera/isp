@@ -51,7 +51,7 @@ int save_bin(char *name,void *buf,int size)
 int save_mat_to_bin(char *picname,char *func_name,Mat img)
 {
    char *f_name=(char *)malloc(128);     
-   sprintf(f_name,"%s_%s.bin",picname,func_name);     
+   sprintf(f_name,"%s_%s_%dx%d.bin",picname,func_name,img.cols,img.rows);     
    log_info("cols=%d rows=%d elemSize=%ld channels=%d",img.cols,img.rows,img.elemSize(),img.channels());
    save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
    free(f_name);

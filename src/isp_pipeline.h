@@ -18,7 +18,7 @@
 using namespace std;
 using namespace cv;
 
-#define ALIGN_TO(size,n) ((size+(n-1))&(~(n-1)))
+#define ALIGN_TO(size,n) (((size)+((n)-1))&(~((n)-1)))
 #define RAW10_PIX0_LOW_MASK (0X3<<0)
 #define RAW10_PIX1_LOW_MASK (0X3<<2)
 #define RAW10_PIX2_LOW_MASK (0X3<<4)

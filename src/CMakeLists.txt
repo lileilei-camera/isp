@@ -19,6 +19,7 @@ sony_dol_hdr.cpp
 add_noise.cpp
 plot_demo.cpp
 bm3d_image_denoising.cpp
+yuv_convert.cpp
 )
 
 TARGET_LINK_LIBRARIES(isp ${OpenCV_LIBS})

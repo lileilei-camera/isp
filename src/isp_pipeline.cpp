@@ -4,6 +4,11 @@
 //#define DEBUG_MIPI_RAW
 int plot_test();
 cv::Mat bm3d_test(char *infile,float sigma,int templateWindowSize,int searchWindowSize);
+char *load_yuv3p4b_10bit_img(char *name,int w,int h, int stride_w);
+vector<cv::Mat> convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(char *buffer,int w,int h,int stride_w);
+vector<cv::Mat> convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(char *buffer,int w,int h,int stride_w);
+int save_yuv4201p2b_to_bin(char *name,vector<cv::Mat> yuv_image);
+int save_yuv4201p2b_to_yuv420_8bit_bin(char *name,vector<cv::Mat> yuv_image);
 
 int save_img(char *picname,char *func_name,Mat img);
 
@@ -498,6 +503,7 @@ static int show_help()
    printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");   
    printf("--plot2d :run plot 2d demo\n");
    printf("--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n");
+   printf("--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it :convert yuv image to 1p2b format\n");
    return 0;
 }
 
@@ -876,6 +882,49 @@ int main( int argc, char *argv[])
     {      
         plot_test();
     } 
+
+       
+    arg_index=get_arg_index_by_name("--to_yuv_1p2b",argc,argv);
+    if(arg_index>0)
+    {    
+        char *buf=NULL;
+        char *name=NULL;
+        int w=3840;
+        int h=2160;
+        int save_8bit=1;
+        int sub_index=get_arg_index_by_name("--name",argc,argv);
+        if(sub_index>0)
+        {
+             name=argv[sub_index+1];
+        }
+        sub_index=get_arg_index_by_name("-w",argc,argv);
+        if(sub_index>0)
+        {
+             w=atoi(argv[sub_index+1]);
+        }
+        sub_index=get_arg_index_by_name("-h",argc,argv);
+        if(sub_index>0)
+        {
+              h=atoi(argv[sub_index+1]);
+        }
+        sub_index=get_arg_index_by_name("--save_8it",argc,argv);
+        if(sub_index>0)
+        {
+              save_8bit=atoi(argv[sub_index+1]);
+        }
+        int stride_w=ALIGN_TO((w*4/3),512);
+        log_info("stride_w=%d",stride_w);
+        buf=load_yuv3p4b_10bit_img(name,w,h,stride_w);
+        vector<cv::Mat> yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);        
+        //vector<cv::Mat> yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
+        if(!save_8bit)
+        {
+           save_yuv4201p2b_to_bin(name,yuv_image);    
+        }else{
+           save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
+        }
+        free(buf);
+    }
     
     arg_index=get_arg_index_by_name("--process",argc,argv);
     if(arg_index>0)
@@ -908,5 +957,8 @@ int main( int argc, char *argv[])
     delete(p_isp);
     return 0;
 }
-
+int end_function()
+{
+  return 0;
+}
 
