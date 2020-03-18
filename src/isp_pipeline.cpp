@@ -4,11 +4,14 @@
 //#define DEBUG_MIPI_RAW
 int plot_test();
 cv::Mat bm3d_test(char *infile,float sigma,int templateWindowSize,int searchWindowSize);
-char *load_yuv3p4b_10bit_img(char *name,int w,int h, int stride_w);
+char *load_yuv3p4b_10bit_img(char *name,int w,int h, int stride_w,char *format);
 vector<cv::Mat> convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(char *buffer,int w,int h,int stride_w);
 vector<cv::Mat> convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(char *buffer,int w,int h,int stride_w);
 int save_yuv4201p2b_to_bin(char *name,vector<cv::Mat> yuv_image);
 int save_yuv4201p2b_to_yuv420_8bit_bin(char *name,vector<cv::Mat> yuv_image);
+vector<cv::Mat> convert_yuv3p4b_10bit_420simi_bin_to_yuv1p2b_420sp(char *buffer,int w,int h,int stride_w);
+vector<cv::Mat> convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(char *buffer,int w,int h,int stride_w);
+int save_yuv4221p2b_to_yuv422_8bit_bin(char *name,vector<cv::Mat> yuv_image);
 
 int save_img(char *picname,char *func_name,Mat img);
 
@@ -503,7 +506,8 @@ static int show_help()
    printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");   
    printf("--plot2d :run plot 2d demo\n");
    printf("--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n");
-   printf("--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it :convert yuv image to 1p2b format\n");
+   printf("--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it --simi --128p --format [yuv_420/yuv_422]:convert yuv image to 1p2b format\n");    
+   printf("               --simi: simi format --128p: artosyn 128 bit continue packed\n");   
    return 0;
 }
 
@@ -892,6 +896,7 @@ int main( int argc, char *argv[])
         int w=3840;
         int h=2160;
         int save_8bit=1;
+        int simi=0;
         int sub_index=get_arg_index_by_name("--name",argc,argv);
         if(sub_index>0)
         {
@@ -912,16 +917,73 @@ int main( int argc, char *argv[])
         {
               save_8bit=atoi(argv[sub_index+1]);
         }
+        simi=0;
+        sub_index=get_arg_index_by_name("--simi",argc,argv);
+        if(sub_index>0)
+        {
+              simi=1;
+        }
+        int continue_128bit_packed=0;
+        sub_index=get_arg_index_by_name("--128p",argc,argv);
+        if(sub_index>0)
+        {
+              continue_128bit_packed=1;
+        }
+        char *format=(char *)"yuv_420";
+        sub_index=get_arg_index_by_name("--format",argc,argv);
+        if(sub_index>0)
+        {
+              format=argv[sub_index+1];
+        }
+
+        
         int stride_w=ALIGN_TO((w*4/3),512);
         log_info("stride_w=%d",stride_w);
-        buf=load_yuv3p4b_10bit_img(name,w,h,stride_w);
-        vector<cv::Mat> yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);        
-        //vector<cv::Mat> yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
+        buf=load_yuv3p4b_10bit_img(name,w,h,stride_w,format);
+        vector<cv::Mat> yuv_image;
+        if(simi)
+        {
+            if(strcmp("yuv_420",format)){
+               yuv_image=convert_yuv3p4b_10bit_420simi_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);
+            }else if(strcmp("yuv_422",format))
+            {
+                yuv_image=convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(buf,w,h,stride_w);               
+            }else
+            {
+              log_info("err not supported format");
+            }
+        }else
+        {    
+           if(strcmp("yuv_420",format))
+           {
+              if(continue_128bit_packed){
+                 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
+              }else{
+                 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(buf,w,h,stride_w); 
+              }
+           }else
+           {
+              log_info("err not supported format");
+           }
+        }
         if(!save_8bit)
         {
-           save_yuv4201p2b_to_bin(name,yuv_image);    
+           if(strcmp("yuv_420",format)){
+             save_yuv4201p2b_to_bin(name,yuv_image);  
+           }else
+           {
+               log_info("err not supported format");
+           }
         }else{
-           save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
+           if(strcmp("yuv_420",format)){
+               save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
+           }else if(strcmp("yuv_422",format))
+           {
+              save_yuv4221p2b_to_yuv422_8bit_bin(name,yuv_image); 
+           }else
+           {
+               log_info("err not supported format");
+           }
         }
         free(buf);
     }
