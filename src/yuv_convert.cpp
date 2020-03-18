@@ -12,10 +12,10 @@ int save_mat_to_bin(char *picname,char *func_name,cv::Mat img);
 char *load_yuv3p4b_10bit_img(char *name,int w,int h, int stride_w,char *format)
 {
    int len=0;
-   if(strcmp(format,"yuv_420"))
+   if(!strcmp(format,"yuv_420"))
    {
       len=stride_w*h*3/2;
-   }else if(strcmp(format,"yuv_422"))
+   }else if(!strcmp(format,"yuv_422"))
    {
       len=stride_w*h*2;
    }
@@ -297,7 +297,7 @@ vector<cv::Mat> convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(char *buffer,
    buffer+=stride_w*h;
    for(i=0;i<h/2;i++)
    {
-      p_line=buffer+stride_w*i;      
+      p_line=buffer+stride_w*2*i;      
       p_4b=(u_int32_t *)p_line;      
       k=0;
       for(j=0;j<w;j+=3)

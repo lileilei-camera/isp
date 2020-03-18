@@ -943,9 +943,9 @@ int main( int argc, char *argv[])
         vector<cv::Mat> yuv_image;
         if(simi)
         {
-            if(strcmp("yuv_420",format)){
+            if(!strcmp("yuv_420",format)){
                yuv_image=convert_yuv3p4b_10bit_420simi_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);
-            }else if(strcmp("yuv_422",format))
+            }else if(!strcmp("yuv_422",format))
             {
                 yuv_image=convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(buf,w,h,stride_w);               
             }else
@@ -954,7 +954,7 @@ int main( int argc, char *argv[])
             }
         }else
         {    
-           if(strcmp("yuv_420",format))
+           if(!strcmp("yuv_420",format))
            {
               if(continue_128bit_packed){
                  yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
@@ -968,16 +968,16 @@ int main( int argc, char *argv[])
         }
         if(!save_8bit)
         {
-           if(strcmp("yuv_420",format)){
+           if(!strcmp("yuv_420",format)){
              save_yuv4201p2b_to_bin(name,yuv_image);  
            }else
            {
                log_info("err not supported format");
            }
         }else{
-           if(strcmp("yuv_420",format)){
+           if(!strcmp("yuv_420",format)){
                save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
-           }else if(strcmp("yuv_422",format))
+           }else if(!strcmp("yuv_422",format))
            {
               save_yuv4221p2b_to_yuv422_8bit_bin(name,yuv_image); 
            }else
