@@ -19,7 +19,7 @@ char *load_yuv3p4b_10bit_img(char *name,int w,int h, int stride_w,char *format)
    {
       len=stride_w*h*2;
    }
-   char *buf=(char *)malloc(len);
+   char *buf=(char *)malloc(len*2);
    load_bin(name,buf,len);
    return buf;
 }
@@ -370,15 +370,44 @@ int save_yuv4201p2b_to_yuv420_8bit_bin(char *name,vector<cv::Mat> yuv_image)
     return 0;
 }
 
+vector<cv::Mat> yuv4221p2b_to_yuv422_8bit(vector<cv::Mat> yuv_image)
+{
+    cv::Mat tmp_mat=yuv_image[0];
+    cv::Mat y_img(tmp_mat.rows,tmp_mat.cols,CV_8UC1);
+    cv::Mat u_img(tmp_mat.rows/2,tmp_mat.cols,CV_8UC1);
+    cv::Mat v_img(tmp_mat.rows/2,tmp_mat.cols,CV_8UC1);
+    vector<cv::Mat> yuv_8_img;
+    int i=0;
+    int j=0;
+    for(i=0;i<tmp_mat.rows;i++)
+    {
+        for(j=0;j<tmp_mat.cols;j++)
+        {
+            y_img.at<u_int8_t>(i,j)=yuv_image[0].at<u_int16_t>(i,j)>>8;
+        }
+    }
+    for(i=0;i<tmp_mat.rows/2;i++)
+    {
+        for(j=0;j<tmp_mat.cols;j++)
+        {
+            u_img.at<u_int8_t>(i,j)=yuv_image[1].at<u_int16_t>(i,j)>>8;
+            v_img.at<u_int8_t>(i,j)=yuv_image[2].at<u_int16_t>(i,j)>>8;
+        }
+    }
+    yuv_8_img.push_back(y_img);   
+    yuv_8_img.push_back(u_img);
+    yuv_8_img.push_back(v_img);   
+    return yuv_8_img;
+}
 
 int save_yuv4221p2b_to_yuv422_8bit_bin(char *name,vector<cv::Mat> yuv_image)
 {
+    log_info("enter");
     char name_l[128];
     cv::Mat tmp_mat=yuv_image[0];
     cv::Mat y_img(tmp_mat.rows,tmp_mat.cols,CV_8UC1);
     cv::Mat u_img(tmp_mat.rows/2,tmp_mat.cols,CV_8UC1);
     cv::Mat v_img(tmp_mat.rows/2,tmp_mat.cols,CV_8UC1);
-    log_info("enter");
     sprintf(name_l,"%s_%dx%d.yuv",name,tmp_mat.cols,tmp_mat.rows);    
     log_info("open file %s",name_l);
     int fd=open(name_l,O_RDWR|O_CREAT);
@@ -446,4 +475,41 @@ int save_yuv4201p2b_to_bin(char *name,vector<cv::Mat> yuv_image)
     return 0;
 }
 
+int yuv422simi_3p4b_save_to_yuv422sp_8bit(char *name,int w,int h,int stride,int num)
+{
+  int i=0;
+  int len=stride*h*2;
+  char *buf=(char *)malloc(len*2);
+  vector<cv::Mat> yuv_img; 
+  vector<cv::Mat> yuv_8_img;
+  cv::Mat tmp_mat;  
+  char name_l[128];
+  int fd=open(name,O_RDONLY);
+  if(fd<0)
+  {
+    log_err("open file failed,please firset gen the data");
+	return fd;
+  }  
+  sprintf(name_l,"%s_8bit420_%dx%d.yuv",name,w,h);    
+  int fd_save=open(name,O_RDWR|O_CREAT);
+  if(fd_save<0)
+  {
+    log_err("open file failed,please firset gen the data");
+	return fd_save;
+  }
 
+  
+  for(i=0;i<num;i++)
+  {     
+     read(fd,buf,len); 
+     yuv_img=convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(buf,w,h,stride);
+     yuv_8_img=yuv4221p2b_to_yuv422_8bit(yuv_img);
+     for(int j=0;j<3;j++)
+     {
+       tmp_mat=yuv_8_img[i];
+       write(fd_save,tmp_mat.data,tmp_mat.cols*tmp_mat.rows*tmp_mat.elemSize());
+    }
+  }
+  close(fd);  
+  close(fd_save);
+}
