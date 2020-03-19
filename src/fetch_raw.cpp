@@ -7,7 +7,7 @@
 #include "isp_pipeline.h"
 #include "isp_log.h"
 
-
+cv::Mat read_128bit_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr);
 cv::Mat read_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
 {
   cv::Mat ret;
@@ -78,6 +78,79 @@ cv::Mat read_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   return ret;
 }
 
+
+cv::Mat read_128bit_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
+{
+    log_func_enter();
+    cv::Mat ret;
+    u_int64_t val; 
+    u_int64_t *p_line;
+    int k=0;
+    if(!name)
+    {
+      log_err("file name null");
+      return ret;
+    }
+    int fd=open(name,O_RDONLY);
+    if(fd<0)
+    {
+      log_err("open file failed");
+      return ret;
+    }
+    
+    int pix_count_per_128bit=128/raw_dscr->bitwidth;
+    int burst_128_num_per_line=ceil((float)raw_dscr->width/(float)pix_count_per_128bit);
+    int byte_num_per_line=burst_128_num_per_line*16;
+    int buf_width=ALIGN_TO(byte_num_per_line,raw_dscr->line_length_algin);  
+    int raw_size=buf_width*raw_dscr->hegiht;  
+    log_info("buf_width=%d,hegiht=%d raw_size=%d pix_count_per_128bit=%d burst_128_num_per_line=%d byte_num_per_line=%d",\
+        buf_width,raw_dscr->hegiht,raw_size,pix_count_per_128bit,burst_128_num_per_line,byte_num_per_line);
+    u_int8_t  *p_raw=(u_int8_t  *)malloc(raw_size);
+    if(!p_raw)
+    {
+      log_err("malloc err");
+      close(fd);
+      return ret;
+    }
+    read(fd,p_raw,raw_size);
+    //then conver the raw file buffer to unpacked uint16 raw
+    cv::Mat raw_16_img(raw_dscr->hegiht,raw_dscr->width,CV_16UC1);
+    int i,j;
+    if(raw_dscr->bitwidth==12){
+         for(i=0;i<raw_dscr->hegiht;i++)
+         {
+            p_line=(u_int64_t *)(p_raw+buf_width*i);
+            k=0;
+            for(j=0;j<raw_dscr->width;j+=10)
+            {
+                val=p_line[k];
+                raw_16_img.at<u_int16_t>(i,j+0)=(val&0xfff)<<4;
+                raw_16_img.at<u_int16_t>(i,j+1)=((val>>12)&0xfff)<<4;
+                raw_16_img.at<u_int16_t>(i,j+2)=((val>>24)&0xfff)<<4;                
+                raw_16_img.at<u_int16_t>(i,j+3)=((val>>36)&0xfff)<<4;                
+                raw_16_img.at<u_int16_t>(i,j+4)=((val>>48)&0xfff)<<4;
+                raw_16_img.at<u_int16_t>(i,j+5)=((val>>60)&0xf);                
+                k++;
+                val=p_line[k];
+                raw_16_img.at<u_int16_t>(i,j+5)=(raw_16_img.at<u_int16_t>(i,j+5)|((val&0xff)<<4))<<4;
+                val=val>>8;
+                raw_16_img.at<u_int16_t>(i,j+6)=(val&0xfff)<<4;
+                raw_16_img.at<u_int16_t>(i,j+7)=((val>>12)&0xfff)<<4;
+                raw_16_img.at<u_int16_t>(i,j+8)=((val>>24)&0xfff)<<4;                
+                raw_16_img.at<u_int16_t>(i,j+9)=((val>>36)&0xfff)<<4;
+                k++;
+            }
+         }
+    }else
+    {
+      log_err("not supported bits");
+    }
+    close(fd);
+    free(p_raw);
+    log_func_exit();
+    return raw_16_img;
+}
+
 cv::Mat read_dng_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
 {
   cv::Mat ret;
@@ -135,7 +208,11 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   }
   if(raw_dscr->is_packed)
   {
-     ret=read_mipi_raw_to_dng16_raw(name,raw_dscr);
+     if(raw_dscr->packed_type==PACKED_TYPE_128BIT){
+        ret=read_128bit_mipi_raw_to_dng16_raw(name,raw_dscr);
+     }else if(raw_dscr->packed_type==PACKED_TYPE_STD_MIPI){
+        ret=read_mipi_raw_to_dng16_raw(name,raw_dscr);
+     }
   }else
   {
      ret=read_dng_raw_to_dng16_raw(name,raw_dscr);

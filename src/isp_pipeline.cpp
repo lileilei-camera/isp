@@ -477,7 +477,9 @@ static int show_help()
 {
    printf("--help :show this help\n");
    printf("--fetch_raw :<name>[raw picture name]\n");
-   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -byaer 2 --bit 12 :note: byaer_farmat isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
+   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 --bit 12 -dng -packed_type\n");
+   printf("      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
+   printf("      | packed_type:0->std_mipi 1->128bit mipi\n");
    printf("--get_blc_pra :<name>[blc tuning picture] \n");
    printf("--process :<raw_name> <name1> <name2> ... --end \n");
    printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
@@ -494,7 +496,7 @@ static int show_help()
    printf("--plot2d :run plot 2d demo\n");
    printf("--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n");
    printf("--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it --simi --128p --format [yuv_420/yuv_422]:convert yuv image to 1p2b format\n");    
-   printf("               --simi: simi format --128p: artosyn 128 bit continue packed\n");   
+   printf("               |--simi: simi format --128p: artosyn 128 bit continue packed\n");   
    return 0;
 }
 
@@ -527,49 +529,6 @@ int main( int argc, char *argv[])
     p_isp_server=(isp_t *)new(isp_t);
     p_isp=get_isp();
     p_isp->isp_pra=(isp_pra_t *)malloc(sizeof(isp_pra_t));
- 
-    #ifdef DEBUG_MIPI_RAW
-    p_isp->raw_dscr.width=4208;
-    p_isp->raw_dscr.hegiht=3120;
-    p_isp->raw_dscr.bitwidth=10;
-    p_isp->raw_dscr.is_packed=1;
-    p_isp->raw_dscr.height_algin=1;
-    p_isp->raw_dscr.width_algin=4;
-    p_isp->raw_dscr.line_length_algin=8;
-    p_isp->raw_dscr.bayer_format=CV_BayerBG; 
-    #else
-    #if 1
-       #if 0
-       p_isp->raw_dscr.width=1952;
-       p_isp->raw_dscr.hegiht=1080;    
-       p_isp->raw_dscr.bitwidth=14;
-       #endif
-       #if 0
-       p_isp->raw_dscr.width=1952;
-       p_isp->raw_dscr.hegiht=2288;
-       p_isp->raw_dscr.bitwidth=12;
-       #endif
-       #if 1
-       p_isp->raw_dscr.width=1920;
-       p_isp->raw_dscr.hegiht=1080;
-       p_isp->raw_dscr.bitwidth=12;
-       #endif   
-    p_isp->raw_dscr.is_packed=0;
-    p_isp->raw_dscr.height_algin=1;
-    p_isp->raw_dscr.width_algin=1;
-    p_isp->raw_dscr.line_length_algin=512;
-    p_isp->raw_dscr.bayer_format=CV_BayerRG; 
-    #else  //dvp raw
-    p_isp->raw_dscr.width=1278;
-    p_isp->raw_dscr.hegiht=800;
-    p_isp->raw_dscr.bitwidth=8;
-    p_isp->raw_dscr.is_packed=0;
-    p_isp->raw_dscr.height_algin=1;
-    p_isp->raw_dscr.width_algin=1;
-    p_isp->raw_dscr.line_length_algin=1;
-    p_isp->raw_dscr.bayer_format=CV_BayerRG; 
-    #endif
-    #endif
        
     arg_index=get_arg_index_by_name("--save_raw_dsc",argc,argv);
     if(arg_index>0)
@@ -602,6 +561,13 @@ int main( int argc, char *argv[])
        {
           p_isp->raw_dscr.is_packed=1;
        }
+       p_isp->raw_dscr.packed_type=PACKED_TYPE_128BIT;
+       sub_arg_index=get_arg_index_by_name("-packed_type",argc,argv);
+       if(sub_arg_index>0)
+       {
+          p_isp->raw_dscr.packed_type=atoi(argv[sub_arg_index+1]);;
+       }
+       
        save_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr)); 
        return 0; 
     }

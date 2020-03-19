@@ -46,6 +46,12 @@ typedef enum
   CV_BayerGR,
 }bayer_format_t;
 
+enum
+{
+   PACKED_TYPE_STD_MIPI,
+   PACKED_TYPE_128BIT,
+};
+
 typedef struct
 {
  int width;
@@ -56,6 +62,7 @@ typedef struct
  int height_algin;
  int line_length_algin;
  bayer_format_t bayer_format;
+ int packed_type;
 }raw_type_file_dscr_t;
 
 typedef struct
