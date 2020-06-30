@@ -141,6 +141,34 @@ cv::Mat read_128bit_mipi_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_d
                 k++;
             }
          }
+    }else if(raw_dscr->bitwidth==10)
+    {
+         for(i=0;i<raw_dscr->hegiht;i++)
+         {
+            p_line=(u_int64_t *)(p_raw+buf_width*i);
+            k=0;
+            for(j=0;j<raw_dscr->width;j+=12)
+            {
+                val=p_line[k];
+                raw_16_img.at<u_int16_t>(i,j+0)=(val&0x3ff)<<6;
+                raw_16_img.at<u_int16_t>(i,j+1)=((val>>10)&0x3ff)<<6;
+                raw_16_img.at<u_int16_t>(i,j+2)=((val>>20)&0x3ff)<<6;                
+                raw_16_img.at<u_int16_t>(i,j+3)=((val>>30)&0x3ff)<<6;                
+                raw_16_img.at<u_int16_t>(i,j+4)=((val>>40)&0x3ff)<<6;
+                raw_16_img.at<u_int16_t>(i,j+5)=((val>>50)&0x3ff)<<6;                
+                raw_16_img.at<u_int16_t>(i,j+6)=((val>>60)&0xf);                
+                k++;
+                val=p_line[k];
+                raw_16_img.at<u_int16_t>(i,j+6)=(raw_16_img.at<u_int16_t>(i,j+6)|((val&0x3f)<<4))<<6;
+                val=val>>6;
+                raw_16_img.at<u_int16_t>(i,j+7)=(val&0x3ff)<<6;
+                raw_16_img.at<u_int16_t>(i,j+8)=((val>>10)&0x3ff)<<6;
+                raw_16_img.at<u_int16_t>(i,j+9)=((val>>20)&0x3ff)<<6;                
+                raw_16_img.at<u_int16_t>(i,j+10)=((val>>30)&0x3ff)<<6;                
+                raw_16_img.at<u_int16_t>(i,j+11)=((val>>40)&0x3ff)<<6;
+                k++;
+            }
+         }
     }else
     {
       log_err("not supported bits");
@@ -220,6 +248,24 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   log_func_exit();
   return ret;
 }
+
+int dump_raw_dng(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_t *raw_dscr)
+{
+	char *f_name=(char *)malloc(128);
+	sprintf(f_name,"%s_dng.raw",name);
+     cv::Mat raw_16_img(img.rows,img.cols,CV_16UC1);
+     int i=0,j=0;
+	for(i=0;i<img.rows;i++)
+	{
+		 for(j=0;j<img.cols;j++)
+		 {
+			raw_16_img.at<u_int16_t>(i,j)=img.at<u_int16_t>(i,j)>>(16-raw_dscr->bitwidth);
+		 }	 
+	}
+	save_bin(f_name,raw_16_img.data,raw_16_img.cols*raw_16_img.rows*raw_16_img.elemSize());   
+	return 0;
+}
+
 
 int dump_raw_to_png(char *name,cv::Mat img,bayer_format_t bayer)
 {

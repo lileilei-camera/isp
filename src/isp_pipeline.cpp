@@ -20,7 +20,6 @@ static isp_t *get_isp(void)
 {
   return p_isp_server;
 }
-
 static int process_fetch_raw(char *name)
 {
    int i=0;
@@ -28,7 +27,8 @@ static int process_fetch_raw(char *name)
    isp_t *p_isp=get_isp();  
    p_isp->raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
    sprintf(f_name,"%s_fetch",name);
-   dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);
+   dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);   
+   dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
 } 
 static int process_get_blc_pra(char *name)
 {
@@ -477,7 +477,7 @@ static int show_help()
 {
    printf("--help :show this help\n");
    printf("--fetch_raw :<name>[raw picture name]\n");
-   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 --bit 12 -dng -packed_type\n");
+   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 -bit 12 -dng -packed_type 1\n");
    printf("      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
    printf("      | packed_type:0->std_mipi 1->128bit mipi\n");
    printf("--get_blc_pra :<name>[blc tuning picture] \n");
