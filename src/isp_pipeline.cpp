@@ -30,6 +30,72 @@ static int process_fetch_raw(char *name)
    dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);   
    dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
 } 
+
+static cv::Mat  process_fetch_raw_and_crop(char *name,int x,int y,int w,int h)
+{
+   int i=0;
+   char f_name[128];   
+   cv::Mat crop_raw_imag; //fetch raw will return the image	  
+   isp_t *p_isp=get_isp();  
+   p_isp->raw_imag=fetch_raw(name,&p_isp->raw_dscr); 
+   sprintf(f_name,"%s_fetch",name);
+   dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);   
+   dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+   //crop the raw
+   crop_raw_imag= p_isp->raw_imag(Rect(x,y,w,h));      
+   sprintf(f_name,"%s_fetch_crop_%d_%d_%d_%d",name,x,y,w,h);
+   dump_raw_to_png(f_name,crop_raw_imag,p_isp->raw_dscr.bayer_format);   
+   dump_raw_dng(f_name,crop_raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+   return crop_raw_imag;
+} 
+
+static cv::Mat  process_fetch_raw_and_scaler_to(char *name,int w,int h)
+{
+	int i=0;	
+	isp_t *p_isp=get_isp();  
+	char f_name[128];	
+	cv::Mat crop_raw_imag; //fetch raw will return the image   
+	int x,y,mid_w,mid_h;	
+	cv::Mat imag(h,w,CV_16UC1);		
+	//fetch raw
+	p_isp->raw_imag=fetch_raw(name,&p_isp->raw_dscr); 	
+	sprintf(f_name,"%s_fetch",name);
+	dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);	
+	dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+	//crop
+     float src_w=p_isp->raw_imag.cols;
+	float src_h=p_isp->raw_imag.rows;
+     float out_ration=(float)w/(float)h;
+	float in_ration=src_w/src_h;
+	if(in_ration>out_ration)
+	{
+	   mid_w=src_h*out_ration;
+	   mid_h=src_h;
+	}else
+	{
+	  mid_w=src_w;
+	  mid_h=src_w/out_ration;
+	}
+	x=(src_w-mid_w)/2;
+	y=(src_h-mid_h)/2;	
+
+	log_info("xywh = %d %d %d %d",x,y,mid_w,mid_h);
+	crop_raw_imag= p_isp->raw_imag(Rect(x,y,mid_w,mid_h));		
+	//split and scaler
+	raw_ch_t raw_ch_orig;	
+	raw_ch_t raw_ch_dest;
+	raw_ch_orig=split_raw_ch(crop_raw_imag,p_isp->raw_dscr.bayer_format);
+	cv::resize(raw_ch_orig.raw_ch_00,raw_ch_dest.raw_ch_00,Size(w/2,h/2),0,0,INTER_CUBIC);	
+	cv::resize(raw_ch_orig.raw_ch_01,raw_ch_dest.raw_ch_01,Size(w/2,h/2),0,0,INTER_CUBIC);	
+	cv::resize(raw_ch_orig.raw_ch_10,raw_ch_dest.raw_ch_10,Size(w/2,h/2),0,0,INTER_CUBIC);		
+	cv::resize(raw_ch_orig.raw_ch_11,raw_ch_dest.raw_ch_11,Size(w/2,h/2),0,0,INTER_CUBIC);	
+	merge_raw_ch(raw_ch_dest,p_isp->raw_dscr.bayer_format,imag);
+	sprintf(f_name,"%s_fetch_scaler_%d_%d",name,w,h);
+	dump_raw_to_png(f_name,imag,p_isp->raw_dscr.bayer_format);   
+	dump_raw_dng(f_name,imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+	return imag;
+}
+
 static int process_get_blc_pra(char *name)
 {
    int i=0;  
@@ -476,7 +542,9 @@ static int get_arg_index_by_name(const char *name, int argc,char *argv[])
 static int show_help()
 {
    printf("--help :show this help\n");
-   printf("--fetch_raw :<name>[raw picture name]\n");
+   printf("--fetch_raw :<name>[raw picture name]\n");   
+   printf("--fetch_raw_and_crop :<name>[raw picture name] x y w h \n");   
+   printf("--fetch_raw_and_scaler :<name>[raw picture name] w h \n");
    printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 -bit 12 -dng -packed_type 1\n");
    printf("      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
    printf("      | packed_type:0->std_mipi 1->128bit mipi\n");
@@ -507,6 +575,7 @@ int main( int argc, char *argv[])
     int arg_index=0;     
     int sub_arg_index=0;
     char f_name[128];
+    char f_name_1[128];
 
     for(i=0;i<argc;i++)
     {
@@ -595,6 +664,48 @@ int main( int argc, char *argv[])
            log_err("too less pra for fetch raw");
         }
     }
+
+    arg_index=get_arg_index_by_name("--fetch_raw_and_crop",argc,argv);
+    if(arg_index>0)
+    {
+        if((arg_index+1)<=(argc-1)){			
+		sprintf(f_name,"%s_fetch",argv[arg_index+1]);		
+		sprintf(f_name_1,"%s_fetch_crop",argv[arg_index+1]);
+		int x=atoi(argv[arg_index+2]);
+		int y=atoi(argv[arg_index+3]);
+		int w=atoi(argv[arg_index+4]);		
+		int h=atoi(argv[arg_index+5]);	
+		log_info("xywh(%d %d %d %d)",x,y,w,h);
+		cv::Mat crop_raw_imag; //fetch raw will return the image   
+           crop_raw_imag=process_fetch_raw_and_crop(argv[arg_index+1],x,y,w,h);           
+           show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);		   
+           show_raw_image(f_name_1,crop_raw_imag,p_isp->raw_dscr.bayer_format);
+        }else
+        {
+           log_err("too less pra for fetch raw");
+        }
+    }
+	
+    arg_index=get_arg_index_by_name("--fetch_raw_and_scaler",argc,argv);
+    if(arg_index>0)
+    {
+        if((arg_index+1)<=(argc-1)){			
+		sprintf(f_name,"%s_fetch",argv[arg_index+1]);		
+		sprintf(f_name_1,"%s_fetch_scaler",argv[arg_index+1]);
+		int w=atoi(argv[arg_index+2]);		
+		int h=atoi(argv[arg_index+3]);	
+		log_info("wh(%d %d)",w,h);
+		cv::Mat raw_imag; //fetch raw will return the image   
+           raw_imag=process_fetch_raw_and_scaler_to(argv[arg_index+1],w,h);           
+           show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);		   
+           show_raw_image(f_name_1,raw_imag,p_isp->raw_dscr.bayer_format);
+        }else
+        {
+           log_err("too less pra for fetch raw");
+        }
+    }
+
+	
     arg_index=get_arg_index_by_name("--get_blc_pra",argc,argv);
     if(arg_index>0)
     {

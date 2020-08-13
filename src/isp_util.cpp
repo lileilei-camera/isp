@@ -39,7 +39,7 @@ int save_bin(char *name,void *buf,int size)
   int fd=open(name,O_RDWR|O_CREAT);
   if(fd<0)
   {
-    log_err("open file failed");
+     log_err("open file failed %s",name);
 	return fd;
   }
   write(fd,buf,size);
