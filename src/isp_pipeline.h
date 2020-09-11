@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include "isp_log.h"
 #include "string.h"
+#include "string"
 #include "isp_util.h"
 #include <unistd.h>
 #include<fstream>
@@ -17,6 +18,11 @@
 
 using namespace std;
 using namespace cv;
+
+
+#define AR_SET_REG_BITS(reg,val,start_bit,end_bit) (reg)=((val)<<(start_bit))| ((reg)&~((0xffffffff>>(32-((end_bit)-(start_bit)+1)))<<(start_bit)))
+#define AR_GET_REG_BITS(reg,start_bit,end_bit) (((reg)&((0xffffffff>>(32-((end_bit)-(start_bit)+1)))<<(start_bit)))>>(start_bit))
+
 
 #define ALIGN_TO(size,n) (((size)+((n)-1))&(~((n)-1)))
 #define RAW10_PIX0_LOW_MASK (0X3<<0)
@@ -113,6 +119,7 @@ typedef struct {
    float rou;
    float beta;
    float deta;
+   int frame_num;
 }hdr_merge_pra_kang2014_t;
 
 
@@ -172,9 +179,10 @@ Mat get_long_exp_img(Mat img,int height,int long_offset);
 Mat get_short_exp_img(Mat img,int height,int short_offset);
 Mat merge_hdr_img(Mat long_img, Mat short_img,float exp_ration,hdr_merge_pra_t *pra);
 Mat drc_hdr_img(Mat hdr_img,float exp_ration,drc_pra_t *pra);
-Mat merge_hdr_img_kang2014(Mat img1, Mat img2,Mat img3,Mat img4,float exp_ration[],hdr_merge_pra_kang2014_t *pra);
+Mat merge_hdr_img_kang2014(Mat img1_long, Mat img2,Mat img3,Mat img4,float exp_ration[],hdr_merge_pra_kang2014_t *pra);
 Mat drc_hdr_img_kang2014_linear(Mat hdr_img);
 Mat drc_hdr_img_kang2014_gamma(Mat hdr_img,float gamma);
+Mat drc_hdr_img_kang2014_gamma_rgb(Mat hdr_img,float gamma);
 cv::Mat demosic_raw_image(cv::Mat img,bayer_format_t bayer);
 int dump_to_exr(char *name,char *sub_name,cv::Mat img);
 int save_yuv_img(char *picname,char *func_name,Mat img);

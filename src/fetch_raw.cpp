@@ -225,6 +225,191 @@ cv::Mat read_dng_raw_to_dng16_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   return ret;
 }
 
+cv::Mat  convert_raw12_to_hdr_encoder_frame(cv::Mat raw_imge,raw_type_file_dscr_t *raw_dscr)
+{    
+     raw_imge=raw_imge/16;   
+     int raw_encoder_img_height=ALIGN_TO(raw_imge.cols*raw_dscr->bitwidth/8,256);
+	cv::Mat raw_encoder_img(raw_imge.rows,raw_encoder_img_height,CV_8UC1);
+	//per 32 pix use 32*12/8  byte =48 byte = 12 uint;
+	//32 pix 3 * 128
+	u_int32_t *p_row=NULL;	
+	u_int32_t *p_row_128=NULL;
+	u_int32_t  val_src;
+	u_int32_t  val_pix;
+	for(int i=0;i<raw_imge.rows;i++)
+	{	
+	   p_row=(u_int32_t *)raw_encoder_img.ptr(i);
+	   for(int j=0;j<raw_imge.cols;j+=32)
+	   {
+	   
+	      //first 128 bit=4 int
+	      p_row_128=p_row;
+	      val_pix=raw_imge.at<u_int16_t>(i,j+0);
+	      val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,20,31);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+1);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,8,19);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+2);
+		 val_src=AR_GET_REG_BITS(val_pix,4,11);		 
+		 AR_SET_REG_BITS(p_row_128[3],val_src,0,7);
+		 val_src=AR_GET_REG_BITS(val_pix,0,3);		
+		 AR_SET_REG_BITS(p_row_128[2],val_src,28,31);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+3);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,16,27);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+4);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,4,15);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+5);
+		 val_src=AR_GET_REG_BITS(val_pix,8,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,0,3);		 
+		 val_src=AR_GET_REG_BITS(val_pix,0,7);		 
+		 AR_SET_REG_BITS(p_row_128[1],val_src,24,31);	
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+6);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,12,23);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+7);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,0,11);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+8);
+	      val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,20,31);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+9);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,8,19);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+10);
+		 val_src=AR_GET_REG_BITS(val_pix,4,11);		 
+		 AR_SET_REG_BITS(p_row_128[0],val_src,0,7);
+		 //second 128 bit
+		 p_row_128+=4;
+		 val_src=AR_GET_REG_BITS(val_pix,0,3);		
+		 AR_SET_REG_BITS(p_row_128[3],val_src,28,31);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+11);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,16,27);
+
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+12);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,4,15);
+ 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+13);
+		 val_src=AR_GET_REG_BITS(val_pix,8,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,0,3);
+		 val_src=AR_GET_REG_BITS(val_pix,0,7);		 
+		 AR_SET_REG_BITS(p_row_128[2],val_src,24,31);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+14);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,12,23);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+15);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,0,11);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+16);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,20,31);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+17);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,8,19);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+18);
+		 val_src=AR_GET_REG_BITS(val_pix,4,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,0,7);
+		 val_src=AR_GET_REG_BITS(val_pix,0,3);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,28,31);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+19);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,16,27);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+20);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,4,15);
+
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+21);
+		 val_src=AR_GET_REG_BITS(val_pix,8,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,0,3);
+		 p_row_128+=4;
+		 val_src=AR_GET_REG_BITS(val_pix,0,7);		 
+		 AR_SET_REG_BITS(p_row_128[3],val_src,24,31);
+
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+22);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,12,23);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+23);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[3],val_src,0,11);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+24);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,20,31);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+25);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,8,19);
+		 
+		 val_pix=raw_imge.at<u_int16_t>(i,j+26);
+		 val_src=AR_GET_REG_BITS(val_pix,4,11);
+		 AR_SET_REG_BITS(p_row_128[2],val_src,0,7);
+		 val_src=AR_GET_REG_BITS(val_pix,0,3);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,28,31);
+
+		  val_pix=raw_imge.at<u_int16_t>(i,j+27);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,16,27);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+28);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,4,15);
+
+		  val_pix=raw_imge.at<u_int16_t>(i,j+29);
+		 val_src=AR_GET_REG_BITS(val_pix,8,11);
+		 AR_SET_REG_BITS(p_row_128[1],val_src,0,3);
+		 val_src=AR_GET_REG_BITS(val_pix,0,7);
+		  AR_SET_REG_BITS(p_row_128[0],val_src,24,31);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+30);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,12,23);
+
+		 val_pix=raw_imge.at<u_int16_t>(i,j+31);
+		 val_src=AR_GET_REG_BITS(val_pix,0,11);
+		 AR_SET_REG_BITS(p_row_128[0],val_src,0,11);		 
+		 p_row+=12;
+	   }
+	}
+	return raw_encoder_img;
+}
+
+
+cv::Mat  convert_raw_to_hdr_encoder_frame(cv::Mat raw_imge,raw_type_file_dscr_t *raw_dscr)
+{    
+     cv::Mat raw_encoder_img;
+     if(raw_dscr->bitwidth==12)
+	{
+          raw_encoder_img=convert_raw12_to_hdr_encoder_frame(raw_imge,raw_dscr);
+	}
+	return raw_encoder_img;
+}
+
 cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
 {
   log_func_enter();
@@ -249,6 +434,122 @@ cv::Mat fetch_raw(char *name,raw_type_file_dscr_t *raw_dscr)
   return ret;
 }
 
+std::vector<cv::Mat> split_hdr_dol_encoder_raw(char *name,int frame_num,int height,int offset1,int offset2,int offset3,raw_type_file_dscr_t *raw_dscr)
+{
+    std::vector<cv::Mat> split_raw_img;
+    cv::Mat ret;
+    u_int8_t *p_val_1=NULL;	
+    u_int8_t *p_val_2=NULL;
+    if(!name)
+    {
+      log_err("file name null");
+      return ret;
+    }
+    int fd=open(name,O_RDONLY);
+    if(fd<0)
+    {
+      log_err("open file failed");
+      return ret;
+    }
+    int buf_width=ALIGN_TO(raw_dscr->width*raw_dscr->bitwidth/8,raw_dscr->line_length_algin);  
+    int raw_size=buf_width*raw_dscr->hegiht;  
+    log_info("buf_width=%d,hegiht=%d raw_size=%d offset1=%d offset2=%d offset3=%d",buf_width,raw_dscr->hegiht,raw_size,offset1,offset2,offset3);
+    u_int8_t  *p_raw=(u_int8_t  *)malloc(raw_size);
+    if(!p_raw)
+    {
+      log_err("malloc err");
+      close(fd);
+      return ret;
+    }
+    read(fd,p_raw,raw_size);
+    //then conver the raw file buffer to unpacked uint16 raw
+    if(frame_num==2){
+        cv::Mat raw_8_img_1(height,buf_width,CV_8UC1);		
+        cv::Mat raw_8_img_2(height,buf_width,CV_8UC1);
+	   u_int8_t  *p_raw_1=p_raw+offset1*buf_width;	   
+	   u_int8_t  *p_raw_2=p_raw+offset2*buf_width;
+        int i,j;
+        for(i=0;i<height;i++)
+        {
+             int line_offset=i*(buf_width*2);   
+             p_val_1=(u_int8_t *)(p_raw_1+line_offset);			 
+             p_val_2=(u_int8_t *)(p_raw_2+line_offset);
+             for(j=0;j<buf_width;j++)
+             {
+                raw_8_img_1.at<u_int8_t>(i,j)=p_val_1[j];				
+                raw_8_img_2.at<u_int8_t>(i,j)=p_val_2[j];
+             }   
+        }
+        split_raw_img.push_back(raw_8_img_1);		
+        split_raw_img.push_back(raw_8_img_2);
+    }else
+    {
+        log_err("now only supported 2 frame hdr split");
+    }
+    close(fd);
+    free(p_raw);
+    log_func_exit();
+    return split_raw_img; 
+}
+
+std::vector<cv::Mat> split_hdr_dol_dng_raw(char *name,int frame_num,int height,int offset1,int offset2,int offset3,raw_type_file_dscr_t *raw_dscr)
+{
+    std::vector<cv::Mat> split_raw_img;
+    cv::Mat ret;
+    u_int8_t *p_val_1=NULL;	
+    u_int8_t *p_val_2=NULL;
+    if(!name)
+    {
+      log_err("file name null");
+      return ret;
+    }
+    int fd=open(name,O_RDONLY);
+    if(fd<0)
+    {
+      log_err("open file failed");
+      return ret;
+    }
+    int buf_width=ALIGN_TO(raw_dscr->width*2,raw_dscr->line_length_algin);	
+    int raw_size=buf_width*raw_dscr->hegiht;  
+    log_info("buf_width=%d,hegiht=%d raw_size=%d offset1=%d offset2=%d offset3=%d",buf_width,raw_dscr->hegiht,raw_size,offset1,offset2,offset3);
+    u_int8_t  *p_raw=(u_int8_t  *)malloc(raw_size);
+    if(!p_raw)
+    {
+      log_err("malloc err");
+      close(fd);
+      return ret;
+    }
+    read(fd,p_raw,raw_size);
+    //then conver the raw file buffer to unpacked uint16 raw
+    if(frame_num==2){
+        cv::Mat raw_8_img_1(height,buf_width,CV_8UC1);		
+        cv::Mat raw_8_img_2(height,buf_width,CV_8UC1);
+	   u_int8_t  *p_raw_1=p_raw+offset1*buf_width;	   
+	   u_int8_t  *p_raw_2=p_raw+offset2*buf_width;
+        int i,j;
+        for(i=0;i<height;i++)
+        {
+             int line_offset=i*(buf_width*2);   
+             p_val_1=(u_int8_t *)(p_raw_1+line_offset);			 
+             p_val_2=(u_int8_t *)(p_raw_2+line_offset);
+             for(j=0;j<buf_width;j++)
+             {
+                raw_8_img_1.at<u_int8_t>(i,j)=p_val_1[j];				
+                raw_8_img_2.at<u_int8_t>(i,j)=p_val_2[j];
+             }   
+        }
+        split_raw_img.push_back(raw_8_img_1);		
+        split_raw_img.push_back(raw_8_img_2);
+    }else
+    {
+        log_err("now only supported 2 frame hdr split");
+    }
+    close(fd);
+    free(p_raw);
+    log_func_exit();
+    return split_raw_img; 
+}
+
 int dump_raw_dng(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_t *raw_dscr)
 {
 	char *f_name=(char *)malloc(128);
@@ -265,6 +566,15 @@ int dump_raw_dng(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_
 	save_bin(f_name,raw_16_img.data,raw_16_img.cols*raw_16_img.rows*raw_16_img.elemSize());   
 	return 0;
 }
+
+int dump_raw_bye(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_t *raw_dscr)
+{
+	char *f_name=(char *)malloc(128);
+	sprintf(f_name,"%s_byte.raw",name);
+	save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
+	return 0;
+}
+
 
 
 int dump_raw_to_png(char *name,cv::Mat img,bayer_format_t bayer)

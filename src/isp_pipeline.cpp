@@ -14,6 +14,13 @@ typedef struct
   cv::Mat lsc_img; //store the img after lsc
 }isp_t;
 
+typedef struct
+{
+   const char *cmd;
+   const char *help[64];
+   void (*process_cmd)(int argc, char *argv[]);
+}process_cmd_t;
+
 static isp_t *p_isp_server=NULL;
 
 static isp_t *get_isp(void)
@@ -29,6 +36,7 @@ static int process_fetch_raw(char *name)
    sprintf(f_name,"%s_fetch",name);
    dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);   
    dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+   dump_raw_bye(f_name, p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
 } 
 
 static cv::Mat  process_fetch_raw_and_crop(char *name,int x,int y,int w,int h)
@@ -96,6 +104,16 @@ static cv::Mat  process_fetch_raw_and_scaler_to(char *name,int w,int h)
 	return imag;
 }
 
+static int convert_raw_2_hdr_encoder_frame(char *name)
+{
+    isp_t *p_isp=get_isp(); 
+    char f_name[128];
+    cv::Mat raw_imag=fetch_raw(name,&p_isp->raw_dscr); 	
+    show_and_save_img(name,(char *)"input",raw_imag);
+    cv::Mat hdr_encoder_raw=convert_raw_to_hdr_encoder_frame(raw_imag,&p_isp->raw_dscr);	
+    sprintf(f_name,"%s_2",name);
+    dump_raw_bye(f_name, hdr_encoder_raw,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+}
 static int process_get_blc_pra(char *name)
 {
    int i=0;  
@@ -235,7 +253,21 @@ static int process_hdr_merge(char *name)
    show_and_save_img(name,(char *)"r_ch_hdr",hdr_img);
 }
 
-static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char *name4)
+static int process_hdr_dol_split(char *name)
+{
+	cv::Mat raw_imag;
+	isp_t *p_isp=get_isp(); 
+	raw_imag=fetch_raw(name,&p_isp->raw_dscr); 	
+	show_and_save_img(name,(char *)"raw_imag",raw_imag);
+	cv::Mat l_img=get_long_exp_img(raw_imag,1080,14);   
+	cv::Mat s_img=get_short_exp_img(raw_imag,1080,25);
+	s_img=s_img*4;
+	show_and_save_img(name,(char *)"l_img",l_img);	 
+	show_and_save_img(name,(char *)"s_img",s_img);
+     return 0;
+}
+
+static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char *name4,int frame_num)
 {
    cv::Mat raw_imge1;   
    cv::Mat raw_imge2;
@@ -247,20 +279,52 @@ static int  process_hdr_merge_kang2014(char *name1,char *name2,char *name3,char 
    raw_imge2=fetch_raw(name2,&p_isp->raw_dscr); 
    raw_imge3=fetch_raw(name3,&p_isp->raw_dscr); 
    raw_imge4=fetch_raw(name4,&p_isp->raw_dscr); 
-   
+   raw_imge1=process_blc_sample(raw_imge1,16<<8);
+   raw_imge2=process_blc_sample(raw_imge2,16<<8);
+   raw_imge3=process_blc_sample(raw_imge3,16<<8);
+   raw_imge4=process_blc_sample(raw_imge4,16<<8);
+
+   #if 0
+   cv::Mat raw_imge3_float;
+   raw_imge3.convertTo(raw_imge3_float,CV_32FC1,1);
+   cv::Mat raw_imge3_float_cfa=isp_cfa_3x3_region(raw_imge3_float,p_isp->raw_dscr.bayer_format);   
+   cv::Mat  raw_imge3_rgb;
+   raw_imge3_float_cfa.convertTo(raw_imge3_rgb,CV_16UC3,1);
+   show_and_save_img(name3,(char *)"raw_imge3_rgb",raw_imge3_rgb);   
+   cv::Mat  opencv_cfa;   
+   cv::cvtColor(raw_imge3,opencv_cfa,CV_BayerBG2BGR);	   
+   show_and_save_img(name3,(char *)"opencv_cfa",opencv_cfa);   
+   #endif
+   #if 1
    hdr_merge_pra_kang2014_t hdr_pra;
-   hdr_pra.rou=2.0/3.0*0xffff;
-   hdr_pra.beta=16<<8;
-   hdr_pra.deta=0.25;
+   hdr_pra.rou=1/3.0*0xffff;
+   hdr_pra.beta=0;  //blc level have 
+   hdr_pra.deta=0.01;
+   hdr_pra.frame_num=frame_num;
    //merg_img 32bit float
    cv::Mat merg_img=merge_hdr_img_kang2014(raw_imge1,raw_imge2,raw_imge3,raw_imge4,ration,&hdr_pra);   
-   //cv::Mat merg_img_demosic=demosic_raw_image(merg_img,p_isp->raw_dscr.bayer_format);
+   cv::Mat merg_img_demosic=isp_cfa_3x3_region(merg_img,p_isp->raw_dscr.bayer_format);
+   
    //only exr format supported float format or 32int
-   dump_to_exr(name1,(char *)"kanghdr_demosic",merg_img);
-   //cv::Mat hdr_img=drc_hdr_img_kang2014_gamma(merg_img,5.0); 
-   cv::Mat hdr_img=drc_hdr_img_kang2014_linear(merg_img);
+   //dump_to_exr(name1,(char *)"kanghdr_demosic",merg_img);
+   cv::Mat hdr_img=drc_hdr_img_kang2014_gamma(merg_img,2.0);    
+   cv::Mat hdr_img_demosic=drc_hdr_img_kang2014_gamma_rgb(merg_img_demosic,4.0); 
+   //cv::Mat hdr_img_line=drc_hdr_img_kang2014_linear(merg_img);
    show_and_save_img(name1,(char *)"kanghdr",hdr_img);   
+   show_and_save_img(name1,(char *)"kanghdr_demosic_2.0_gamma",hdr_img_demosic);      
+   // show_and_save_img(name1,(char *)"hdr_img_line",hdr_img_line);   
+
+   cv::Mat hdr_img_bilter=drc_hdr_img_kang2014_bilateral(merg_img_demosic);
+   
+   //cv::Mat hdr_img_bilter=drc_hdr_img_kang2014_local_bilateral(merg_img_demosic);
+   cv::Mat hdr_img_bilter_8bit;
+   hdr_img_bilter.convertTo(hdr_img_bilter_8bit,CV_8UC3,1);   
+   char name_frame[128];
+   sprintf(name_frame,"hdr_img_bilter_8bit_%d",frame_num);
+   show_and_save_img(name1,(char *)name_frame,hdr_img_bilter_8bit);	   
+ 
    dump_raw_to_png(name1,hdr_img,p_isp->raw_dscr.bayer_format);
+   #endif
 }
 
 Mat addGaussianNoise(Mat &srcImag,float avg,float std);
@@ -539,69 +603,65 @@ static int get_arg_index_by_name(const char *name, int argc,char *argv[])
      }
      return -1;    
 }
-static int show_help()
-{
-   printf("--help :show this help\n");
-   printf("--fetch_raw :<name>[raw picture name]\n");   
-   printf("--fetch_raw_and_crop :<name>[raw picture name] x y w h \n");   
-   printf("--fetch_raw_and_scaler :<name>[raw picture name] w h \n");
-   printf("--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 -bit 12 -dng -packed_type 1\n");
-   printf("      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n");
-   printf("      | packed_type:0->std_mipi 1->128bit mipi\n");
-   printf("--get_blc_pra :<name>[blc tuning picture] \n");
-   printf("--process :<raw_name> <name1> <name2> ... --end \n");
-   printf("--get_raw_his :<name>[raw picture] --log_en --dump_mem\n");   
-   printf("--plot_raw_hist :<name>[raw picture]\n");
-   printf("--raw_denoise :<name>[raw picture name] --multi \n");   
-   printf("--hdr_merge :<name>[raw picture name]\n");   
-   printf("--hdr_merge_kang2014 [name1 name2 name3 name4]\n");
-   printf("--add_noise --name [name] --avg [avg] --std [sigma] \n");
-   printf("--rgbtoyuv --name [name] \n");
-   printf("--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n");
-   printf("--dct --name [name] \n");   
-   printf("--haar --name [name] --multi [b_multi]\n");   
-   printf("--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n");   
-   printf("--plot2d :run plot 2d demo\n");
-   printf("--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n");
-   printf("--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it --simi --128p --format [yuv_420/yuv_422]:convert yuv image to 1p2b format\n");    
-   printf("               |--simi: simi format --128p: artosyn 128 bit continue packed\n");   
-   return 0;
-}
 
-int main( int argc, char *argv[])
+void process_cmd_fetch_raw(int argc, char *argv[])
 {
-    int i=0;
     isp_t *p_isp=NULL;
-    int arg_index=0;     
-    int sub_arg_index=0;
-    char f_name[128];
-    char f_name_1[128];
-
-    for(i=0;i<argc;i++)
-    {
-       printf("%s ",argv[i]);
-    }
-    printf("\n");
-    
-    if(argc==1)
-    {
-       show_help();
-       return 0;
-    }
-    arg_index=get_arg_index_by_name("--help",argc,argv);
-    if(arg_index>0)
-    {
-        show_help();
-        return 0;
-    }
-    
-    p_isp_server=(isp_t *)new(isp_t);
+    char f_name[128];	
     p_isp=get_isp();
-    p_isp->isp_pra=(isp_pra_t *)malloc(sizeof(isp_pra_t));
-       
-    arg_index=get_arg_index_by_name("--save_raw_dsc",argc,argv);
+    int arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
     if(arg_index>0)
     {
+        if((arg_index+1)<=(argc-1)){
+           process_fetch_raw(argv[arg_index+1]);           
+           sprintf(f_name,"%s_fetch",argv[arg_index+1]);
+           show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);
+        }else
+        {
+           log_err("too less pra for fetch raw");
+        }
+    }
+}
+void process_cmd_fetch_raw_and_crop(int argc, char *argv[])
+{
+     isp_t *p_isp=NULL;
+     char f_name[128];	
+     char f_name_1[128];	
+     p_isp=get_isp();
+     int arg_index=0;
+     arg_index=get_arg_index_by_name("--fetch_raw_and_crop",argc,argv);
+	 if(arg_index>0)
+	 {
+		 if((arg_index+1)<=(argc-1)){			 
+		 sprintf(f_name,"%s_fetch",argv[arg_index+1]);		 
+		 sprintf(f_name_1,"%s_fetch_crop",argv[arg_index+1]);
+		 int x=atoi(argv[arg_index+2]);
+		 int y=atoi(argv[arg_index+3]);
+		 int w=atoi(argv[arg_index+4]); 	 
+		 int h=atoi(argv[arg_index+5]);  
+		 log_info("xywh(%d %d %d %d)",x,y,w,h);
+		 cv::Mat crop_raw_imag; //fetch raw will return the image	
+			crop_raw_imag=process_fetch_raw_and_crop(argv[arg_index+1],x,y,w,h);		   
+			show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);		
+			show_raw_image(f_name_1,crop_raw_imag,p_isp->raw_dscr.bayer_format);
+		 }else
+		 {
+			log_err("too less pra for fetch raw");
+		 }
+	 }
+
+}
+void process_cmd_save_raw_dsc(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+     arg_index=get_arg_index_by_name("--save_raw_dsc",argc,argv);
+     if(arg_index>0)
+     {
+       int sub_arg_index=0;
        sub_arg_index=get_arg_index_by_name("-w",argc,argv);
        if(sub_arg_index>0){
           p_isp->raw_dscr.width=atoi(argv[sub_arg_index+1]);
@@ -636,56 +696,16 @@ int main( int argc, char *argv[])
        {
           p_isp->raw_dscr.packed_type=atoi(argv[sub_arg_index+1]);;
        }
-       
        save_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr)); 
-       return 0; 
     }
-    if(load_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr))<0)
-    {
-       log_err("err load raw dsc");
-       free(p_isp->isp_pra);
-       delete(p_isp);
-       return 0;
-    }
-    
-    
-    cv::Mat blc_imag(p_isp->raw_dscr.hegiht,p_isp->raw_dscr.width,CV_16UC1);
-    p_isp->blc_imag=blc_imag;
-    
-    arg_index=get_arg_index_by_name("--fetch_raw",argc,argv);
-    if(arg_index>0)
-    {
-        if((arg_index+1)<=(argc-1)){
-           process_fetch_raw(argv[arg_index+1]);           
-           sprintf(f_name,"%s_fetch",argv[arg_index+1]);
-           show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);
-        }else
-        {
-           log_err("too less pra for fetch raw");
-        }
-    }
-
-    arg_index=get_arg_index_by_name("--fetch_raw_and_crop",argc,argv);
-    if(arg_index>0)
-    {
-        if((arg_index+1)<=(argc-1)){			
-		sprintf(f_name,"%s_fetch",argv[arg_index+1]);		
-		sprintf(f_name_1,"%s_fetch_crop",argv[arg_index+1]);
-		int x=atoi(argv[arg_index+2]);
-		int y=atoi(argv[arg_index+3]);
-		int w=atoi(argv[arg_index+4]);		
-		int h=atoi(argv[arg_index+5]);	
-		log_info("xywh(%d %d %d %d)",x,y,w,h);
-		cv::Mat crop_raw_imag; //fetch raw will return the image   
-           crop_raw_imag=process_fetch_raw_and_crop(argv[arg_index+1],x,y,w,h);           
-           show_raw_image(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);		   
-           show_raw_image(f_name_1,crop_raw_imag,p_isp->raw_dscr.bayer_format);
-        }else
-        {
-           log_err("too less pra for fetch raw");
-        }
-    }
-	
+}
+void process_cmd_fetch_raw_and_scaler(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--fetch_raw_and_scaler",argc,argv);
     if(arg_index>0)
     {
@@ -705,7 +725,14 @@ int main( int argc, char *argv[])
         }
     }
 
-	
+}
+void process_cmd_get_blc_pra(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--get_blc_pra",argc,argv);
     if(arg_index>0)
     {
@@ -717,23 +744,33 @@ int main( int argc, char *argv[])
         }
     }
 
-    arg_index=get_arg_index_by_name("--get_raw_his",argc,argv);
+}
+void process_cmd_get_raw_his(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+    arg_index=get_arg_index_by_name("--get_blc_pra",argc,argv);
     if(arg_index>0)
     {
         if((arg_index+1)<=(argc-1)){
-           process_get_hist(argv[arg_index+1]);
-           sub_arg_index=get_arg_index_by_name("--log_en",argc,argv);
-           if(sub_arg_index>0)
-           {
-              log_raw_hist(&p_isp->raw_hsit);
-           }
-           release_raw_hist(&p_isp->raw_hsit);
+           process_get_blc_pra(argv[arg_index+1]);
         }else
         {
-           log_err("too less pra for get_raw_his");
+           log_err("too less pra for get_blc_pra");
         }
     }
 
+}
+void process_cmd_plot_raw_hist(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--plot_raw_hist",argc,argv);
     if(arg_index>0)
     {
@@ -745,6 +782,14 @@ int main( int argc, char *argv[])
         }
     }
 
+}
+void process_cmd_raw_denoise(int argc, char *argv[])
+{
+	isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--raw_denoise",argc,argv);
     if(arg_index>0)
     {
@@ -761,6 +806,14 @@ int main( int argc, char *argv[])
            log_err("too less pra for raw_denoise");
         }
     }
+}
+void process_cmd_hdr_merge(int argc, char *argv[])
+{	
+    isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--hdr_merge",argc,argv);
     if(arg_index>0)
     {
@@ -771,19 +824,83 @@ int main( int argc, char *argv[])
            log_err("too less pra for hdr_merge");
         }
     }
-    
+}
+void process_cmd_hdr_dol_split(int argc, char *argv[])
+{
+    isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+    arg_index=get_arg_index_by_name("--hdr_dol_split",argc,argv);
+    if(arg_index>0)
+    {
+        if((arg_index+1)<=(argc-1))
+	   {
+              process_hdr_dol_split(argv[arg_index+1]);
+        }else
+        {
+              log_err("too less pra for hdr_merge");
+        }
+    }
+
+}
+void process_cmd_hdr_merge_kang2014(int argc, char *argv[])
+{
+    isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--hdr_merge_kang2014",argc,argv);
     if(arg_index>0)
     {
         if((arg_index+4)<=(argc-1)){
-           process_hdr_merge_kang2014(argv[arg_index+1],argv[arg_index+2],argv[arg_index+3],argv[arg_index+4]);
+		int frame_num=2;			
+           int index_sub=get_arg_index_by_name("--n",argc,argv);
+		 if(index_sub>0)
+		 {
+		     frame_num=atoi(argv[index_sub+1]);
+		 }
+		 char *n1=NULL;
+		 char *n2=NULL;
+		 char *n3=NULL;
+		 char *n4=NULL;
+		 if(frame_num==2)
+		 {
+		    n1=argv[arg_index+3];
+		    n2=argv[arg_index+4];
+		    n3=argv[arg_index+4];
+		    n4=argv[arg_index+4];
+		 }else if(frame_num==3)
+		 {
+		      n1=argv[arg_index+2];
+		      n2=argv[arg_index+3];
+			 n3=argv[arg_index+4];
+			 n4=argv[arg_index+4];
+		 }else
+		 {
+		      n1=argv[arg_index+1];
+		      n2=argv[arg_index+2];
+			 n3=argv[arg_index+3];
+			 n4=argv[arg_index+4];
+		 }
+            process_hdr_merge_kang2014(n1,n2,n3,n4,frame_num);
         }else
         {
            log_err("too less pra for hdr_merge_kang2014");
         }
     }
-    
-    arg_index=get_arg_index_by_name("--add_noise",argc,argv);
+
+}
+void process_cmd_add_noise(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+	    arg_index=get_arg_index_by_name("--add_noise",argc,argv);
     if(arg_index>0)
     {      
         int sub_index=0;
@@ -802,6 +919,14 @@ int main( int argc, char *argv[])
            process_add_noise(argv[sub_index+1],avg,std);
         }
     }
+}
+void process_cmd_rgbtoyuv(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--rgbtoyuv",argc,argv);
     if(arg_index>0)
     {      
@@ -811,7 +936,14 @@ int main( int argc, char *argv[])
            process_rgb_to_yuv(argv[sub_index+1]);
         }
     }
-   
+}
+void process_cmd_mesh_grid(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--mesh_grid",argc,argv);
     if(arg_index>0)
     {      
@@ -845,9 +977,16 @@ int main( int argc, char *argv[])
             all_block=get_all_mesh_block(name,mesh_size,skip);
         }
         ref_match=get_match_block(all_block[0],all_block,th);
-        paint_match_block_to_orig(name,all_block[0], ref_match);
-        
+        paint_match_block_to_orig(name,all_block[0], ref_match); 
     }
+}
+void process_cmd_dct(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--dct",argc,argv);
     if(arg_index>0)
     {      
@@ -861,6 +1000,14 @@ int main( int argc, char *argv[])
         process_dct(name);
     }   
 
+}
+void process_cmd_haar(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--haar",argc,argv);
     if(arg_index>0)
     {      
@@ -879,7 +1026,16 @@ int main( int argc, char *argv[])
         } 
         process_haar_denoise(name,multi);
     } 
-    
+
+}
+void process_cmd_convert_to(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+
     arg_index=get_arg_index_by_name("--convert_to",argc,argv);
     if(arg_index>0)
     {      
@@ -912,6 +1068,14 @@ int main( int argc, char *argv[])
         process_convert(name,to,save_to_bin,w,h);
     }
 
+}
+void process_cmd_bm3d_image_denoising(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
     arg_index=get_arg_index_by_name("--bm3d_image_denoising",argc,argv);
     if(arg_index>0)
     {      
@@ -944,138 +1108,415 @@ int main( int argc, char *argv[])
         show_and_save_img(name,(char *)"bm3d_denoise",denoise_img); 
         
     }
-   
+
+}
+void process_cmd_plot2d(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+        
     arg_index=get_arg_index_by_name("--plot2d",argc,argv);
     if(arg_index>0)
     {      
         plot_test();
     } 
 
-       
+}
+
+void process_cmd_to_yuv_1p2b(int argc, char *argv[])
+{
+      isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+
     arg_index=get_arg_index_by_name("--to_yuv_1p2b",argc,argv);
     if(arg_index>0)
-    {    
-        char *buf=NULL;
-        char *name=NULL;
-        int w=3840;
-        int h=2160;
-        int save_8bit=1;
-        int simi=0;
-        int sub_index=get_arg_index_by_name("--name",argc,argv);
-        if(sub_index>0)
-        {
-             name=argv[sub_index+1];
-        }
-        sub_index=get_arg_index_by_name("-w",argc,argv);
-        if(sub_index>0)
-        {
-             w=atoi(argv[sub_index+1]);
-        }
-        sub_index=get_arg_index_by_name("-h",argc,argv);
-        if(sub_index>0)
-        {
-              h=atoi(argv[sub_index+1]);
-        }
-        sub_index=get_arg_index_by_name("--save_8it",argc,argv);
-        if(sub_index>0)
-        {
-              save_8bit=atoi(argv[sub_index+1]);
-        }
-        simi=0;
-        sub_index=get_arg_index_by_name("--simi",argc,argv);
-        if(sub_index>0)
-        {
-              simi=1;
-        }
-        int continue_128bit_packed=0;
-        sub_index=get_arg_index_by_name("--128p",argc,argv);
-        if(sub_index>0)
-        {
-              continue_128bit_packed=1;
-        }
-        char *format=(char *)"yuv_420";
-        sub_index=get_arg_index_by_name("--format",argc,argv);
-        if(sub_index>0)
-        {
-              format=argv[sub_index+1];
-        }
+    {	 
+    	char *buf=NULL;
+    	char *name=NULL;
+    	int w=3840;
+    	int h=2160;
+    	int save_8bit=1;
+    	int simi=0;
+    	int sub_index=get_arg_index_by_name("--name",argc,argv);
+    	if(sub_index>0)
+    	{
+    		 name=argv[sub_index+1];
+    	}
+    	sub_index=get_arg_index_by_name("-w",argc,argv);
+    	if(sub_index>0)
+    	{
+    		 w=atoi(argv[sub_index+1]);
+    	}
+    	sub_index=get_arg_index_by_name("-h",argc,argv);
+    	if(sub_index>0)
+    	{
+    		  h=atoi(argv[sub_index+1]);
+    	}
+    	sub_index=get_arg_index_by_name("--save_8it",argc,argv);
+    	if(sub_index>0)
+    	{
+    		  save_8bit=atoi(argv[sub_index+1]);
+    	}
+    	simi=0;
+    	sub_index=get_arg_index_by_name("--simi",argc,argv);
+    	if(sub_index>0)
+    	{
+    		  simi=1;
+    	}
+    	int continue_128bit_packed=0;
+    	sub_index=get_arg_index_by_name("--128p",argc,argv);
+    	if(sub_index>0)
+    	{
+    		  continue_128bit_packed=1;
+    	}
+    	char *format=(char *)"yuv_420";
+    	sub_index=get_arg_index_by_name("--format",argc,argv);
+    	if(sub_index>0)
+    	{
+    		  format=argv[sub_index+1];
+    	}
+    
+    	
+    	int stride_w=ALIGN_TO((w*4/3),512);
+    	log_info("stride_w=%d",stride_w);
+    	buf=load_yuv3p4b_10bit_img(name,w,h,stride_w,format);
+    	vector<cv::Mat> yuv_image;
+    	if(simi)
+    	{
+    		if(!strcmp("yuv_420",format)){
+    		   yuv_image=convert_yuv3p4b_10bit_420simi_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);
+    		}else if(!strcmp("yuv_422",format))
+    		{
+    		   yuv_image=convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(buf,w,h,stride_w);
+    		}else
+    		{
+    		  log_info("err not supported format");
+    		}
+    	}else
+    	{	 
+    	   if(!strcmp("yuv_420",format))
+    	   {
+    		  if(continue_128bit_packed){
+    			 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
+    		  }else{
+    			 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(buf,w,h,stride_w); 
+    		  }
+    	   }else
+    	   {
+    		  log_info("err not supported format");
+    	   }
+    	}
+    	if(!save_8bit)
+    	{
+    	   if(!strcmp("yuv_420",format)){
+    		 save_yuv4201p2b_to_bin(name,yuv_image);  
+    	   }else
+    	   {
+    		   log_info("err not supported format");
+    	   }
+    	}else{
+    	   if(!strcmp("yuv_420",format)){
+    		   save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
+    	   }else if(!strcmp("yuv_422",format))
+    	   {
+    		  save_yuv4221p2b_to_yuv422_8bit_bin(name,yuv_image); 
+    	   }else
+    	   {
+    		   log_info("err not supported format");
+    	   }
+    	}
+    	free(buf);
+    }	    
+ }
+void process_cmd_plotmat(int argc, char *argv[])
+{
+     isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
 
-        
-        int stride_w=ALIGN_TO((w*4/3),512);
-        log_info("stride_w=%d",stride_w);
-        buf=load_yuv3p4b_10bit_img(name,w,h,stride_w,format);
-        vector<cv::Mat> yuv_image;
-        if(simi)
-        {
-            if(!strcmp("yuv_420",format)){
-               yuv_image=convert_yuv3p4b_10bit_420simi_bin_to_yuv1p2b_420sp(buf,w,h,stride_w);
-            }else if(!strcmp("yuv_422",format))
-            {
-               yuv_image=convert_yuv3p4b_10bit_422simi_bin_to_yuv1p2b_422sp(buf,w,h,stride_w);
-            }else
-            {
-              log_info("err not supported format");
-            }
-        }else
-        {    
-           if(!strcmp("yuv_420",format))
-           {
-              if(continue_128bit_packed){
-                 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp_2(buf,w,h,stride_w);
-              }else{
-                 yuv_image=convert_yuv3p4b_10bit_420sp_bin_to_yuv1p2b_420sp(buf,w,h,stride_w); 
-              }
-           }else
-           {
-              log_info("err not supported format");
-           }
-        }
-        if(!save_8bit)
-        {
-           if(!strcmp("yuv_420",format)){
-             save_yuv4201p2b_to_bin(name,yuv_image);  
-           }else
-           {
-               log_info("err not supported format");
-           }
-        }else{
-           if(!strcmp("yuv_420",format)){
-               save_yuv4201p2b_to_yuv420_8bit_bin(name,yuv_image); 
-           }else if(!strcmp("yuv_422",format))
-           {
-              save_yuv4221p2b_to_yuv422_8bit_bin(name,yuv_image); 
-           }else
-           {
-               log_info("err not supported format");
-           }
-        }
-        free(buf);
-    }    
-    arg_index=get_arg_index_by_name("--process",argc,argv);
+    arg_index=get_arg_index_by_name("--plotmat",argc,argv);
+    if(arg_index>0)
+    {       
+	   matplot_test(); 
+    }
+}
+void process_cmd_split_dol_hdr_encoder_frame(int argc, char *argv[])
+{
+     isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+    arg_index=get_arg_index_by_name("--split_dol_hdr_encoder_frame",argc,argv);
     if(arg_index>0)
     {
-       load_isp_pra(p_isp->isp_pra,sizeof(isp_pra_t));
-       int arg_end=get_arg_index_by_name("--end",argc,argv);
-       if(arg_end>0)
-       {
-          int pro_index=0;
-          process_fetch_raw(argv[arg_index+1]);          
-          sprintf(f_name,"%s_fetch",argv[arg_index+1]);
-          show_raw_image(argv[arg_index+1],p_isp->raw_imag,p_isp->raw_dscr.bayer_format);
-          log_info("arg_index=%d,arg_end=%d",arg_index,arg_end);
-          for(pro_index=arg_index+2;pro_index<arg_end;pro_index++)
-          {
-              if(!strcmp("blc",argv[pro_index]))
-              {
-                 log_info("%s",argv[pro_index]);
-                 process_proc_blc(argv[arg_index+1]);                 
-                 sprintf(f_name,"%s_blc",argv[arg_index+1]);
-                 show_raw_image(f_name,p_isp->blc_imag,p_isp->raw_dscr.bayer_format);
-              }
-          }
-       }
+         //[name] [frame_num] [height] [offset1] [offset2] [offset2]
+         char *name=argv[arg_index+1];
+         int frame_num=atoi(argv[arg_index+2]);
+	    int  height=atoi(argv[arg_index+3]);
+         int offset1=atoi(argv[arg_index+4]);		  
+         int offset2=atoi(argv[arg_index+5]);		  
+         int offset3=atoi(argv[arg_index+6]);
+	    log_info("name=%s frame_num=%d height=%d offset1=%d offset2=%d offset3=%d",name,frame_num,height,offset1,offset2,offset3);
+	    std::vector<cv::Mat> ret=split_hdr_dol_encoder_raw(name,frame_num,height,offset1,offset2,offset3,&p_isp->raw_dscr);
+	    sprintf(f_name,"%s_1",name);
+	    dump_raw_bye(f_name, ret[0],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);		
+	    sprintf(f_name,"%s_2",name);
+	    dump_raw_bye(f_name, ret[1],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
     }
 
+}
+void process_cmd_split_dol_dng_frame(int argc, char *argv[])
+{
+     isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+
+      arg_index=get_arg_index_by_name("--split_dol_dng_frame",argc,argv);
+      if(arg_index>0)
+      {
+      	 //[name] [frame_num] [height] [offset1] [offset2] [offset2]
+      	 char *name=argv[arg_index+1];
+      	 int frame_num=atoi(argv[arg_index+2]);
+      	int  height=atoi(argv[arg_index+3]);
+      	 int offset1=atoi(argv[arg_index+4]);		  
+      	 int offset2=atoi(argv[arg_index+5]);		  
+      	 int offset3=atoi(argv[arg_index+6]);
+      	log_info("name=%s frame_num=%d height=%d offset1=%d offset2=%d offset3=%d",name,frame_num,height,offset1,offset2,offset3);
+      	std::vector<cv::Mat> ret=split_hdr_dol_dng_raw(name,frame_num,height,offset1,offset2,offset3,&p_isp->raw_dscr);
+      	sprintf(f_name,"%s_1",name);
+      	dump_raw_bye(f_name, ret[0],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr); 	
+      	sprintf(f_name,"%s_2",name);
+      	dump_raw_bye(f_name, ret[1],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+      }
+
+}
+void process_cmd_convert_raw_2_hdr_encoder_frame(int argc, char *argv[])
+{
+     isp_t *p_isp=NULL;
+	char f_name[128];  
+	char f_name_1[128];    
+	p_isp=get_isp();
+	int arg_index=0;
+	arg_index=get_arg_index_by_name("--convert_raw_2_hdr_encoder_frame",argc,argv);
+      if(arg_index>0)
+      {
+         cv::Mat raw_imag=fetch_raw(argv[arg_index+1],&p_isp->raw_dscr); 
+         cv::Mat hdr_encoder_img=convert_raw_to_hdr_encoder_frame(raw_imag,&p_isp->raw_dscr);	   
+	   dump_raw_bye(argv[arg_index+1], hdr_encoder_img,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+      }
+}
+int main( int argc, char *argv[])
+{
+    process_cmd_t cmd_list[]=
+    {
+    	     {
+		      .cmd="--save_raw_dsc",
+			 .help={ "--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 -bit 12 -dng -packed_type 1\n",
+                          "      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n",
+                          "      | packed_type:0->std_mipi 1->128bit mipi\n",
+			          NULL
+			        },
+			 .process_cmd=process_cmd_save_raw_dsc,
+		},
+       	{
+			 .cmd="--fetch_raw",
+			 .help={ "--fetch_raw :<name>[raw picture name]\n",NULL},
+			 .process_cmd=process_cmd_fetch_raw,
+		},
+		{
+		      .cmd="--fetch_raw_and_crop",
+			 .help={ "--fetch_raw_and_crop :<name>[raw picture name] x y w h \n",NULL},
+			 .process_cmd=process_cmd_fetch_raw_and_crop,
+		},
+		{
+		      .cmd="--fetch_raw_and_scaler",
+			 .help={ "--fetch_raw_and_scaler :<name>[raw picture name] w h \n",NULL},
+			 .process_cmd=process_cmd_fetch_raw_and_scaler,
+		},
+		{
+		      .cmd="--get_blc_pra",
+			 .help={ "--get_blc_pra :<name>[blc tuning picture] \n",NULL},
+			 .process_cmd=process_cmd_get_blc_pra,
+		},
+		{
+		      .cmd="--get_raw_his",
+			 .help={ "--get_raw_his :<name>[raw picture] --log_en --dump_mem\n",NULL},
+			 .process_cmd=process_cmd_get_raw_his,
+		},
+		{
+		      .cmd="--plot_raw_hist",
+			 .help={ "--plot_raw_hist :<name>[raw picture]\n",NULL},
+			 .process_cmd=process_cmd_plot_raw_hist,
+		},
+		{
+		      .cmd="--raw_denoise",
+			 .help={ "--raw_denoise :<name>[raw picture name] --multi \n",NULL},
+			 .process_cmd=process_cmd_raw_denoise,
+		},
+		{
+		      .cmd="--hdr_merge",
+			 .help={ "--hdr_merge :<name>[raw picture name] note: only for imx307 dol single frame",NULL},
+			 .process_cmd=process_cmd_hdr_merge,
+		},
+		{
+		      .cmd="--hdr_dol_split",
+			 .help={ "--hdr_dol_split :<name>[raw picture name]\n",NULL},
+			 .process_cmd=process_cmd_hdr_dol_split,
+		},
+		{
+		      .cmd="--hdr_merge_kang2014",
+			 .help={ "--hdr_merge_kang2014 [name1 name2 name3 name4] ,note: name1 is long exp\n",NULL},
+			 .process_cmd=process_cmd_hdr_merge_kang2014,
+		},
+		{
+		      .cmd="--add_noise",
+			 .help={ "--add_noise --name [name] --avg [avg] --std [sigma]\n",NULL},
+			 .process_cmd=process_cmd_add_noise,
+		},
+	     {
+		      .cmd="--rgbtoyuv",
+			 .help={ "--rgbtoyuv --name [name] \n",NULL},
+			 .process_cmd=process_cmd_rgbtoyuv,
+		},
+	      {
+		      .cmd="--mesh_grid",
+			 .help={ "--mesh_grid --name [name] --size [n*n] --skip [skip] --th [th]: eg --mesh_grid 64 --th 100 \n",NULL},
+			 .process_cmd=process_cmd_mesh_grid,
+		},
+	     {
+		      .cmd="--dct",
+			 .help={ "--dct --name [name] \n",NULL},
+			 .process_cmd=process_cmd_dct,
+		},
+	     {
+		      .cmd="--haar",
+			 .help={ "----haar --name [name] --multi [b_multi]\n",NULL},
+			 .process_cmd=process_cmd_haar,
+		},
+	     {
+		      .cmd="--convert_to",
+			 .help={ "--convert_to --name [name] --to [rgb565/rgb1555] --save_to_bin --size [w,h]\n",NULL},
+			 .process_cmd=process_cmd_convert_to,
+		},
+	     {
+		      .cmd="--bm3d_image_denoising",
+			 .help={ "--bm3d_image_denoising --name <string> --sigma <double> --block_size <int> --search_windows_size <int>\n",NULL},
+			 .process_cmd=process_cmd_bm3d_image_denoising,
+		},
+	     {
+		      .cmd="--plot2d",
+			 .help={ "--plot2d :run plot 2d demo\n",NULL},
+			 .process_cmd=process_cmd_plot2d,
+		},
+	     {
+		      .cmd="--to_yuv_1p2b",
+			 .help={ 
+			           "--to_yuv_1p2b  --name [name] -w[w] -h[h] --save_8it --simi --128p --format [yuv_420/yuv_422]:convert yuv image to 1p2b format\n",
+				      "       |--simi: simi format --128p: artosyn 128 bit continue packed\n",
+			           NULL
+			         },
+			 .process_cmd=process_cmd_to_yuv_1p2b,
+		},
+	     {
+		      .cmd="--plotmat",
+			 .help={ "--plotmat :run matplot demo\n",NULL},
+			 .process_cmd=process_cmd_plotmat,
+		},
+	      {
+		      .cmd="--split_dol_hdr_encoder_frame",
+			 .help={ "--split_dol_hdr_encoder_frame [name] [frame_num] [height] [offset1] [offset2] [offset2]\n",NULL},
+			 .process_cmd=process_cmd_split_dol_hdr_encoder_frame,
+		},
+	     {
+		      .cmd="--split_dol_dng_frame",
+			 .help={ "--split_dol_dng_frame [name] [frame_num] [height] [offset1] [offset2] [offset2]\n",NULL},
+			 .process_cmd=process_cmd_split_dol_dng_frame,
+		},
+	     {
+		      .cmd="--convert_raw_2_hdr_encoder_frame",
+			 .help={ "--convert_raw_2_hdr_encoder_frame [name]\n",NULL},
+			 .process_cmd=process_cmd_convert_raw_2_hdr_encoder_frame,
+		},
+    };
+
+    int i=0;
+    isp_t *p_isp=NULL;
+    int arg_index=0;     
+
+    for(i=0;i<argc;i++)
+    {
+       printf("%s ",argv[i]);
+    }
+    printf("\n"); 
+    arg_index=get_arg_index_by_name("--help",argc,argv);
+    if(arg_index>0 ||argc==1)
+    {
+        if(argc>=3)
+        {
+            char *help_cmd=argv[arg_index+1];			
+		  for(int i=0;i<sizeof(cmd_list)/sizeof(process_cmd_t);i++)
+		  {
+		      if(!strcmp(help_cmd,cmd_list[i].cmd))
+		      {
+		            int j=0;
+                       while(cmd_list[i].help[j])
+			       {
+                           printf("%s",cmd_list[i].help[j]);
+               			j++;
+                       }
+			       break;
+		      }
+		  }
+        }else{
+            for(int i=0;i<sizeof(cmd_list)/sizeof(process_cmd_t);i++)
+            {
+                int j=0;
+                while(cmd_list[i].help[j]){
+                    printf("%s",cmd_list[i].help[j]);
+    			    j++;
+                }
+            }
+        }
+        return 0;
+    }
+    p_isp_server=(isp_t *)new(isp_t);
+    p_isp=get_isp();
+    p_isp->isp_pra=(isp_pra_t *)malloc(sizeof(isp_pra_t));
+    //load raw cfg  format etc
+    if(load_bin((char *)"raw_dsc.bin",&p_isp->raw_dscr,sizeof(p_isp->raw_dscr))<0)
+    {
+       log_err("err load raw dsc");
+       free(p_isp->isp_pra);
+       delete(p_isp);
+       return 0;
+    }
+
+    //process cmd
+    for(int i=0;i<sizeof(cmd_list)/sizeof(process_cmd_t);i++)
+    {
+        char *cmd=(char *)cmd_list[i].cmd;
+	   if(!strcmp(cmd,argv[1]))
+	   {
+	       cmd_list[i].process_cmd(argc,argv);
+		  break;
+	   }
+    }
+    if(i>=sizeof(cmd_list)/sizeof(process_cmd_t))
+    {
+        log_info("no cmd %s",argv[1]);
+    }
+	
     log_info("press a key to exit");
     cvWaitKey(0);
     free(p_isp->isp_pra);

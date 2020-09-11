@@ -73,4 +73,19 @@ raw_ch_t  process_blc(raw_ch_t ch,blc_pra_t blc_pra,bayer_format_t bayer)
   }
   return ch;
 }
-
+Mat   process_blc_sample(Mat in_image,u_int16_t blc)
+{
+   for(int i=0;i<in_image.rows;i++)
+   {
+       for(int j=0;j<in_image.cols;j++)
+       {
+           if(in_image.at<u_int16_t>(i,j)>=blc){
+              in_image.at<u_int16_t>(i,j)=in_image.at<u_int16_t>(i,j)-blc;
+           }else
+           {
+               in_image.at<u_int16_t>(i,j)=0;
+           }
+       }
+   }
+   return in_image;
+}

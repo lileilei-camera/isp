@@ -6,8 +6,8 @@ using namespace cv;
 
 int plot_test()
 {
-    Mat data_x( 1, 192, CV_64F );
-    Mat data_y( 1, 192, CV_64F );
+    Mat data_x( 1, 512, CV_64F );
+    Mat data_y( 1, 512, CV_64F );
 
     for ( int i = 0; i < data_x.cols; i++ )
     {
@@ -26,8 +26,8 @@ int plot_test()
 
     imshow( "The plot rendered with default visualization options", plot_result );
 
-    plot->setShowText( false );
-    plot->setShowGrid( false );
+    plot->setShowText( true );
+    plot->setShowGrid( true );
     plot->setPlotBackgroundColor( Scalar( 255, 200, 200 ) );
     plot->setPlotLineColor( Scalar( 255, 0, 0 ) );
     plot->setPlotLineWidth( 1 );

@@ -1,26 +1,228 @@
 #include "isp_pipeline.h"
 //out is a bgr picture
-Mat isp_cfa(Mat in_img,bayer_format_t format,int algo=0)
-{
 
-  IplImage imge;
-  cv::Mat out;
-  int code=CV_BayerBG2RGB;
-  switch(format)
+cv::Mat isp_cfa_3x3_region(cv::Mat in_img,int format)
+{
+  int pic_w=in_img.cols;
+  int pic_h=in_img.rows;
+  cv::Mat out(pic_h,pic_w,CV_32FC3);
+  int count=0;
+  if(format==CV_BayerBG)
   {
-    case CV_BayerBG:
-    code=CV_BayerBG2BGR;
-    break;
-    case CV_BayerGB:
-    code=CV_BayerGB2BGR;
-    break;    
-    case CV_BayerRG:
-    code=CV_BayerRG2BGR;
-    break;    
-    case CV_BayerGR:
-    code=CV_BayerGR2BGR;
-    break;
+     for(int i=0;i<pic_h;i++)
+     	{
+	 	for(int j=0;j<pic_w;j++)
+	 	{
+	 	     out.at<Vec3f>(i,j)[0]=0;
+			out.at<Vec3f>(i,j)[1]=0;
+			out.at<Vec3f>(i,j)[2]=0;
+                if((!(j%2))&&(!(i%2)))
+                {
+                    //this is b, need r g 
+                    out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i,j);
+			    //g
+			    count=0;
+			    if(i-1>=0){
+			       out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j);
+				  count++;
+			    }
+			    if(i+1<pic_h)
+			    {
+			        out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j);
+				   count++;
+			    }
+			    if(j-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j+1);
+				    count++;
+			    }
+			   out.at<Vec3f>(i,j)[1]/=count;
+			   //r
+			   count=0;
+			    if(i-1>=0&&j-1>=0){
+			       out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i-1,j-1);
+				  count++;
+			    }
+			    if(i+1<pic_h&&j+1<pic_w)
+			    {
+			        out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i+1,j+1);
+				   count++;
+			    }
+			    if(j-1>=0&&i+1<pic_h)
+			    {
+			         out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i+1,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w&&i-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i-1,j+1);
+				    count++;
+			    }
+			    out.at<Vec3f>(i,j)[2]/=count;
+                }
+			else if(((j%2))&&(!(i%2)))
+			{
+			    //this gb, need r b
+			    count=0;
+			    out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j);
+			    count++;
+			    if(i-1>=0&&j-1>=0){
+			       out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j-1);
+				  count++;
+			    }
+			    if(i+1<pic_h&&j+1<pic_w)
+			    {
+			        out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j+1);
+				   count++;
+			    }
+			    if(j-1>=0&&i+1<pic_h)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w&&i-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j+1);
+				    count++;
+			    }
+			    out.at<Vec3f>(i,j)[1]/=count;
+			    //r
+			    count=0;
+			    if(i-1>=0){
+			       out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i-1,j);
+				  count++;
+			    }
+			    if(i+1<pic_h)
+			    {
+			        out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i+1,j);
+				   count++;
+			    }
+			    out.at<Vec3f>(i,j)[2]/=count;
+			    //b
+			    count=0;
+			    if(j-1>=0)
+			    {
+			        out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w)
+			    {
+			         out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i,j+1);
+				    count++;
+			    }
+			   out.at<Vec3f>(i,j)[0]/=count;			  
+			}else if((!(j%2))&&((i%2)))
+	 	     {
+
+	 	     	    //this gr, need r b
+			    count=0;
+			    out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j);
+			    count++;
+			    if(i-1>=0&&j-1>=0){
+			       out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j-1);
+				  count++;
+			    }
+			    if(i+1<pic_h&&j+1<pic_w)
+			    {
+			        out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j+1);
+				   count++;
+			    }
+			    if(j-1>=0&&i+1<pic_h)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w&&i-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j+1);
+				    count++;
+			    }
+			    out.at<Vec3f>(i,j)[1]/=count;
+			    //b
+			    count=0;
+			    if(i-1>=0){
+			       out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i-1,j);
+				  count++;
+			    }
+			    if(i+1<pic_h)
+			    {
+			        out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i+1,j);
+				   count++;
+			    }
+			    out.at<Vec3f>(i,j)[0]/=count;
+			    //r
+			    count=0;
+			    if(j-1>=0)
+			    {
+			        out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w)
+			    {
+			         out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i,j+1);
+				    count++;
+			    }
+			   out.at<Vec3f>(i,j)[2]/=count;	
+	 	     
+	 	}else
+	 	{
+	 	         //this is r, need b g 
+	 	         count=0;
+                    out.at<Vec3f>(i,j)[2]+=in_img.at<float>(i,j);
+			    //g
+			    if(i-1>=0){
+			       out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i-1,j);
+				  count++;
+			    }
+			    if(i+1<pic_h)
+			    {
+			        out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i+1,j);
+				   count++;
+			    }
+			    if(j-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j-1);
+				    count++;
+			    }
+			    if(j+1<pic_w)
+			    {
+			         out.at<Vec3f>(i,j)[1]+=in_img.at<float>(i,j+1);
+				    count++;
+			    }
+			   out.at<Vec3f>(i,j)[1]/=count;
+			   //b
+			   count=0;
+			    if(i-1>=0&&j-1>=0){
+			       out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i-1,j-1);
+				  count++;
+			    }
+			    if(i+1<pic_h&&j+1<pic_w)
+			    {
+			        out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i+1,j+1);
+				   count++;
+			    }
+			    if(j-1>=0&&i+1<pic_h)
+			    {
+			         out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i+1,j-1);
+				   count++;
+			    }
+			    if(j+1<pic_w&&i-1>=0)
+			    {
+			         out.at<Vec3f>(i,j)[0]+=in_img.at<float>(i-1,j+1);
+				    count++;
+			    }
+			    out.at<Vec3f>(i,j)[0]/=count;
+	 	}		
+       }
   }
-  cv::cvtColor(in_img,out,code);
-  return out;
+}else
+{
+     log_err("not supported format");
+}
+ return out;
 }

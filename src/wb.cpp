@@ -38,4 +38,13 @@ Mat isp_wb(Mat in_bayer_img,float r_gain,float g_gain,float b_gain,bayer_format_
   merge_raw_ch(ch,format,out_bayer_img);
   return out_bayer_img;
 }
-
+Mat isp_wb_rgb(Mat in_rgb_8_bit,float r_gain,float g_gain,float b_gain)
+{
+   for(int i=0;i<in_rgb_8_bit.rows;i++)
+   {
+      for(int j=0;j<in_rgb_8_bit.cos;j++)
+      {
+          
+      }
+   }
+}
