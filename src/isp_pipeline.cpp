@@ -1268,9 +1268,11 @@ void process_cmd_split_dol_hdr_encoder_frame(int argc, char *argv[])
 	    log_info("name=%s frame_num=%d height=%d offset1=%d offset2=%d offset3=%d",name,frame_num,height,offset1,offset2,offset3);
 	    std::vector<cv::Mat> ret=split_hdr_dol_encoder_raw(name,frame_num,height,offset1,offset2,offset3,&p_isp->raw_dscr);
 	    sprintf(f_name,"%s_1",name);
-	    dump_raw_bye(f_name, ret[0],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);		
+	    dump_raw_bye(f_name, ret[0],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);				
+	    dump_raw_bye_to_text_hex_format(f_name, ret[0],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
 	    sprintf(f_name,"%s_2",name);
-	    dump_raw_bye(f_name, ret[1],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
+	    dump_raw_bye(f_name, ret[1],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);		
+	    dump_raw_bye_to_text_hex_format(f_name, ret[1],p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
     }
 
 }
@@ -1325,6 +1327,7 @@ int main( int argc, char *argv[])
 			 .help={ "--save_raw_dsc -w 1920 -h 1080 -stride 512 -bayer 2 -bit 12 -dng -packed_type 1\n",
                           "      | note: bayer format: isCV_BayerBG[0] CV_BayerGB[1] CV_BayerRG[2] CV_BayerGR[3]\n",
                           "      | packed_type:0->std_mipi 1->128bit mipi\n",
+                          "      | eg: ./isp --save_raw_dsc -w 1920 -h 1080 -stride 256 -bayer 2 -bit 12 -packed_type 1 \n",
 			          NULL
 			        },
 			 .process_cmd=process_cmd_save_raw_dsc,
@@ -1366,7 +1369,7 @@ int main( int argc, char *argv[])
 		},
 		{
 		      .cmd="--hdr_merge",
-			 .help={ "--hdr_merge :<name>[raw picture name] note: only for imx307 dol single frame",NULL},
+			 .help={ "--hdr_merge :<name>[raw picture name] note: only for imx307 dol single frame\n",NULL},
 			 .process_cmd=process_cmd_hdr_merge,
 		},
 		{

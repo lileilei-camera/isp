@@ -23,5 +23,6 @@ int save_mat_to_bin(char *picname,char *func_name,Mat img);
 Mat drc_hdr_img_kang2014_local_bilateral(Mat hdr_img);
 Mat   process_blc_sample(Mat in_image,u_int16_t blc);
 cv::Mat  convert_raw_to_hdr_encoder_frame(cv::Mat raw_imge,raw_type_file_dscr_t *raw_dscr);
+int dump_raw_bye_to_text_hex_format(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_t *raw_dscr);
 #endif
 

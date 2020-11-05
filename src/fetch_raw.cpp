@@ -572,7 +572,39 @@ int dump_raw_bye(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_
 	char *f_name=(char *)malloc(128);
 	sprintf(f_name,"%s_byte.raw",name);
 	save_bin(f_name,img.data,img.cols*img.rows*img.elemSize());   
+	free(f_name);
 	return 0;
+}
+
+
+
+int dump_raw_bye_to_text_hex_format(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_t *raw_dscr)
+{   
+      char *f_name=(char *)malloc(128);
+	 u_int8_t *p_data=NULL;
+	 int len=0;
+      sprintf(f_name,"%s_byte.raw.txt",name);
+      FILE *fd=fopen(f_name,"w");
+      if(fd==NULL)
+      {
+         log_err("open file failed %s",name);
+    	    return 0;
+      }
+	 p_data=img.data;
+	 len=img.cols*img.rows*img.elemSize();
+      for(int i=0;i<len;i+=16)
+      {
+	    for(int j=15;j>=0;j--)
+	    {
+	       fprintf(fd,"%02x",p_data[j]);
+	    }		
+	    fprintf(fd,"\n");		
+	    p_data+=16;
+      }
+      log_info("save success %s %d",f_name,len);
+      fclose(fd);
+	 free(f_name);
+      return 0;	  
 }
 
 
