@@ -36,7 +36,6 @@ static int process_fetch_raw(char *name)
    sprintf(f_name,"%s_fetch",name);
    dump_raw_to_png(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format);   
    dump_raw_dng(f_name,p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
-   dump_raw_bye(f_name, p_isp->raw_imag,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
 } 
 
 static cv::Mat  process_fetch_raw_and_crop(char *name,int x,int y,int w,int h)
@@ -253,17 +252,23 @@ static int process_hdr_merge(char *name)
    show_and_save_img(name,(char *)"r_ch_hdr",hdr_img);
 }
 
-static int process_hdr_dol_split(char *name)
+static int process_hdr_dol_split(char *name,int height,int longoffset, int short_offset,int short_gain)
 {
 	cv::Mat raw_imag;
 	isp_t *p_isp=get_isp(); 
+	log_info("%s height %d longoffset %d short_offset %d",name,height,longoffset,short_offset);
 	raw_imag=fetch_raw(name,&p_isp->raw_dscr); 	
 	show_and_save_img(name,(char *)"raw_imag",raw_imag);
-	cv::Mat l_img=get_long_exp_img(raw_imag,1080,14);   
-	cv::Mat s_img=get_short_exp_img(raw_imag,1080,25);
-	s_img=s_img*4;
+	cv::Mat l_img=get_long_exp_img(raw_imag,height,longoffset);   
+	cv::Mat s_img=get_short_exp_img(raw_imag,height,short_offset);
+	s_img*=short_gain;
 	show_and_save_img(name,(char *)"l_img",l_img);	 
-	show_and_save_img(name,(char *)"s_img",s_img);
+	show_and_save_img(name,(char *)"s_img",s_img);	
+	char name_f[128];
+	sprintf(name_f,"%s_l_img",name);
+	dump_raw_dng(name_f,l_img,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);		
+	sprintf(name_f,"%s_s_img",name);
+	dump_raw_dng(name_f,s_img,p_isp->raw_dscr.bayer_format,&p_isp->raw_dscr);
      return 0;
 }
 
@@ -837,7 +842,11 @@ void process_cmd_hdr_dol_split(int argc, char *argv[])
     {
         if((arg_index+1)<=(argc-1))
 	   {
-              process_hdr_dol_split(argv[arg_index+1]);
+	         int height=atoi(argv[arg_index+2]);			 
+	         int long_offset=atoi(argv[arg_index+3]);			 
+	         int short_offset=atoi(argv[arg_index+4]);
+		    int short_gain=atoi(argv[arg_index+5]);
+              process_hdr_dol_split(argv[arg_index+1],height,long_offset,short_offset,short_gain);
         }else
         {
               log_err("too less pra for hdr_merge");
@@ -1374,7 +1383,7 @@ int main( int argc, char *argv[])
 		},
 		{
 		      .cmd="--hdr_dol_split",
-			 .help={ "--hdr_dol_split :<name>[raw picture name]\n",NULL},
+			 .help={ "--hdr_dol_split :<name>[raw picture name] height longoffset shortoffset short_gain\n",NULL},
 			 .process_cmd=process_cmd_hdr_dol_split,
 		},
 		{

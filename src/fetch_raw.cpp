@@ -564,6 +564,8 @@ int dump_raw_dng(char *name,cv::Mat img,bayer_format_t bayer,raw_type_file_dscr_
 		 }	 
 	}
 	save_bin(f_name,raw_16_img.data,raw_16_img.cols*raw_16_img.rows*raw_16_img.elemSize());   
+	log_info("success %s",f_name);
+	free(f_name);
 	return 0;
 }
 
